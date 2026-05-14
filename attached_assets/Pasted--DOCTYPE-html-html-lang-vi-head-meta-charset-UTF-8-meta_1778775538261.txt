@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Flashcard App</title>
+
+<style>
+
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:linear-gradient(135deg,#ffd6e0,#d9f0ff);
+  min-height:100vh;
+  padding:20px;
+}
+
+h1{
+  text-align:center;
+  color:#ff4f81;
+}
+
+.dashboard{
+  max-width:1200px;
+  margin:auto;
+}
+
+.top-box{
+  background:white;
+  padding:20px;
+  border-radius:20px;
+  margin-bottom:20px;
+  box-shadow:0 5px 20px rgba(0,0,0,0.1);
+}
+
+input,select{
+  width:100%;
+  padding:12px;
+  border-radius:12px;
+  border:2px solid #ddd;
+  margin-top:10px;
+  box-sizing:border-box;
+}
+
+button{
+  border:none;
+  border-radius:12px;
+  padding:12px;
+  cursor:pointer;
+  font-size:15px;
+  transition:0.2s;
+  margin-top:10px;
+}
+
+button:hover{
+  transform:scale(1.03);
+}
+
+.add-btn{
+  background:#ff4f81;
+  color:white;
+  width:100%;
+}
+
+.learn-btn{
+  background:#2196F3;
+  color:white;
+  width:100%;
+}
+
+.back-btn{
+  background:#777;
+  color:white;
+  width:100%;
+}
+
+.pack-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+  gap:20px;
+}
+
+.pack{
+  background:white;
+  border-radius:20px;
+  padding:20px;
+  box-shadow:0 5px 20px rgba(0,0,0,0.1);
+}
+
+.progress-bar{
+  width:100%;
+  height:20px;
+  background:#eee;
+  border-radius:20px;
+  overflow:hidden;
+}
+
+.progress{
+  height:100%;
+  background:#4CAF50;
+}
+
+.flashcard-page{
+  display:none;
+  max-width:500px;
+  margin:auto;
+  background:white;
+  padding:30px;
+  border-radius:20px;
+  box-shadow:0 5px 20px rgba(0,0,0,0.15);
+}
+
+.hanzi{
+  font-size:55px;
+  text-align:center;
+  margin:40px 0;
+  font-weight:bold;
+}
+
+.result{
+  text-align:center;
+  font-size:22px;
+  margin-top:15px;
+  font-weight:bold;
+}
+
+.meaning{
+  text-align:center;
+  margin-top:10px;
+  color:#555;
+  font-size:18px;
+}
+
+.score{
+  text-align:center;
+  margin-top:20px;
+}
+
+</style>
+</head>
+<body>
+
+<!-- USERS -->
+<div class="dashboard" id="dashboard">
+
+<h1>📚 Flashcard App</h1>
+
+<div class="top-box">
+
+<h3>➕ Thêm người dùng</h3>
+
+<input
+type="text"
+id="newUser"
+placeholder="Tên người dùng"
+>
+
+<button
+class="add-btn"
+onclick="createUser()"
+>
+Tạo User
+</button>
+
+</div>
+
+<div
+class="pack-grid"
+id="userGrid"
+></div>
+
+</div>
+
+<!-- USER PAGE -->
+<div
+class="dashboard"
+id="userPage"
+style="display:none"
+>
+
+<button
+class="back-btn"
+onclick="backUsers()"
+>
+← Quay lại Users
+</button>
+
+<h1 id="userTitle"></h1>
+
+<div class="top-box">
+
+<h3>➕ Tạo bộ từ</h3>
+
+<input
+type="text"
+id="newPackName"
+placeholder="Tên bộ từ"
+>
+
+<select id="packLanguage">
+
+<option value="chinese">
+Tiếng Trung
+</option>
+
+<option value="english">
+Tiếng Anh
+</option>
+
+</select>
+
+<button
+class="add-btn"
+onclick="createPack()"
+>
+Tạo bộ
+</button>
+
+</div>
+
+<div id="userPackGrid"></div>
+
+</div>
+
+<!-- FLASHCARD -->
+<div
+class="flashcard-page"
+id="flashcardPage"
+>
+
+<button
+class="back-btn"
+onclick="backPacks()"
+>
+← Quay lại Packs
+</button>
+
+<h2 id="packTitle"></h2>
+
+<div
+class="hanzi"
+id="hanzi"
+></div>
+
+<input
+type="text"
+id="answer"
+placeholder="Nhập đáp án..."
+>
+
+<button
+class="learn-btn"
+onclick="checkAnswer()"
+>
+Kiểm tra
+</button>
+
+<button
+class="add-btn"
+onclick="finishStudy()"
+>
+✅ Hoàn thành buổi học
+</button>
+
+<button
+class="learn-btn"
+onclick="startWrongWordsMode()"
+>
+❌ Chỉ học từ sai
+</button>
+
+<div
+class="result"
+id="result"
+></div>
+
+<div
+class="meaning"
+id="meaning"
+></div>
+
+<div class="score">
+
+✅ Đúng:
+<span id="score">0</span>
+
+</div>
+
+<div
+style="
+margin-top:30px;
+border-top:2px dashed #ddd;
+padding-top:20px;
+"
+>
+
+<h3>➕ Thêm từ</h3>
+
+<input
+type="text"
+id="newWord"
+placeholder="Từ vựng"
+>
+
+<input
+type="text"
+id="newMeaning"
+placeholder="Nghĩa"
+>
+
+<button
+class="add-btn"
+onclick="addWordToCurrentPack()"
+>
+Thêm từ
+</button>
+
+</div>
+
+</div>
+
+<script>
+
+/* =========================
+   DATA
+========================= */
+
+let users = [
+
+{
+
+name:"Ynax",
+
+packs:[
+
+{
+
+name:"HSK 2",
+
+language:"chinese",
+
+learned:0,
+
+words:[
+
+{
+hanzi:"苹果",
+meaning:"quả táo"
+},
+
+{
+hanzi:"老师",
+meaning:"giáo viên"
+},
+
+{
+hanzi:"学校",
+meaning:"trường học"
+}
+
+]
+
+}
+
+]
+
+}
+
+];
+
+
+/* =========================
+   LOAD
+========================= */
+
+if(localStorage.getItem("flashcardData")){
+
+users =
+JSON.parse(
+localStorage.getItem("flashcardData")
+);
+
+}
+
+
+/* =========================
+   SAVE
+========================= */
+
+function saveData(){
+
+localStorage.setItem(
+"flashcardData",
+JSON.stringify(users)
+);
+
+}
+
+
+/* =========================
+   VARIABLES
+========================= */
+
+let currentUser = null;
+let currentPack = null;
+let currentIndex = 0;
+
+let wrongWords = [];
+let wrongWordsOnly = [];
+
+let totalCorrect = 0;
+let score = 0;
+
+let studyWrongOnly = false;
+
+
+/* =========================
+   USERS
+========================= */
+
+function renderUsers(){
+
+let html = "";
+
+users.forEach((user,index)=>{
+
+html += `
+
+<div class="pack">
+
+<h2>
+👤 ${user.name}
+</h2>
+
+<p>
+📚 ${user.packs.length} bộ từ
+</p>
+
+<button
+class="learn-btn"
+onclick="openUser(${index})"
+>
+Vào học
+</button>
+
+<button
+class="add-btn"
+onclick="editUser(${index})"
+>
+✏️ Sửa User
+</button>
+
+</div>
+
+`;
+
+});
+
+document.getElementById("userGrid")
+.innerHTML = html;
+
+}
+
+function createUser(){
+
+let name =
+document.getElementById("newUser")
+.value
+.trim();
+
+if(name === ""){
+
+alert("Nhập tên!");
+
+return;
+
+}
+
+users.push({
+
+name:name,
+packs:[]
+
+});
+
+saveData();
+
+document.getElementById("newUser")
+.value = "";
+
+renderUsers();
+
+}
+
+function editUser(index){
+
+let user = users[index];
+
+let menu = prompt(
+
+`1 = Đổi tên
+2 = Xóa user`
+
+);
+
+if(menu == "1"){
+
+let newName =
+prompt(
+"Tên mới:",
+user.name
+);
+
+if(newName){
+
+user.name = newName;
+
+}
+
+}
+
+else if(menu == "2"){
+
+if(confirm("Xóa user?")){
+
+users.splice(index,1);
+
+}
+
+}
+
+saveData();
+
+renderUsers();
+
+}
+
+function openUser(index){
+
+currentUser = users[index];
+
+document.getElementById("dashboard")
+.style.display = "none";
+
+document.getElementById("userPage")
+.style.display = "block";
+
+document.getElementById("userTitle")
+.innerText =
+"📚 Bộ từ của "
++ currentUser.name;
+
+renderPacks();
+
+}
+
+function backUsers(){
+
+document.getElementById("dashboard")
+.style.display = "block";
+
+document.getElementById("userPage")
+.style.display = "none";
+
+renderUsers();
+
+}
+
+
+/* =========================
+   PACKS
+========================= */
+
+function createPack(){
+
+let name =
+document.getElementById("newPackName")
+.value
+.trim();
+
+let language =
+document.getElementById("packLanguage")
+.value;
+
+if(name === ""){
+
+alert("Nhập tên bộ!");
+
+return;
+
+}
+
+currentUser.packs.push({
+
+name:name,
+language:language,
+learned:0,
+words:[]
+
+});
+
+saveData();
+
+document.getElementById("newPackName")
+.value = "";
+
+renderPacks();
+
+}
+
+function renderPacks(){
+
+let chineseHTML = "";
+let englishHTML = "";
+
+currentUser.packs.forEach((pack,index)=>{
+
+let percent = 0;
+
+if(pack.words.length > 0){
+
+percent =
+Math.floor(
+(pack.learned / pack.words.length)
+* 100
+);
+
+}
+
+let card = `
+
+<div class="pack">
+
+<h2>${pack.name}</h2>
+
+<p>
+📖 ${pack.words.length} từ
+</p>
+
+<p>
+✅ ${percent}%
+</p>
+
+<div class="progress-bar">
+
+<div
+class="progress"
+style="width:${percent}%"
+></div>
+
+</div>
+
+<button
+class="learn-btn"
+onclick="openPack(${index})"
+>
+Học ngay
+</button>
+
+<button
+class="add-btn"
+onclick="editPack(${index})"
+>
+✏️ Sửa bộ
+</button>
+
+</div>
+
+`;
+
+if(pack.language === "english"){
+
+englishHTML += card;
+
+}
+
+else{
+
+chineseHTML += card;
+
+}
+
+});
+
+let both =
+chineseHTML !== ""
+&&
+englishHTML !== "";
+
+if(!both){
+
+document.getElementById("userPackGrid")
+.innerHTML = `
+
+<div
+style="
+display:flex;
+justify-content:center;
+"
+>
+
+<div style="width:80%">
+
+${chineseHTML || englishHTML}
+
+</div>
+
+</div>
+
+`;
+
+}
+
+else{
+
+document.getElementById("userPackGrid")
+.innerHTML = `
+
+<div
+style="
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:30px;
+"
+>
+
+<div>
+
+<h2
+style="
+text-align:center;
+color:#ff4f81;
+"
+>
+🇨🇳 Tiếng Trung
+</h2>
+
+<div class="pack-grid">
+
+${chineseHTML}
+
+</div>
+
+</div>
+
+<div>
+
+<h2
+style="
+text-align:center;
+color:#2196F3;
+"
+>
+🇬🇧 Tiếng Anh
+</h2>
+
+<div class="pack-grid">
+
+${englishHTML}
+
+</div>
+
+</div>
+
+</div>
+
+`;
+
+}
+
+}
+
+function editPack(index){
+
+let pack =
+currentUser.packs[index];
+
+let menu = prompt(
+
+`1 = Đổi tên
+2 = Xóa bộ`
+
+);
+
+if(menu == "1"){
+
+let newName =
+prompt(
+"Tên mới:",
+pack.name
+);
+
+if(newName){
+
+pack.name = newName;
+
+}
+
+}
+
+else if(menu == "2"){
+
+if(confirm("Xóa bộ?")){
+
+currentUser.packs.splice(index,1);
+
+}
+
+}
+
+saveData();
+
+renderPacks();
+
+}
+
+
+/* =========================
+   OPEN PACK
+========================= */
+
+function openPack(index){
+
+currentPack =
+currentUser.packs[index];
+
+let mode;
+
+if(currentPack.language === "chinese"){
+
+mode = prompt(
+
+`1 = Hiện chữ Hán → viết chữ Hán
+2 = Hiện nghĩa → viết chữ Hán`
+
+);
+
+}
+
+else{
+
+mode = prompt(
+
+`1 = Hiện tiếng Anh → nhập nghĩa
+2 = Hiện nghĩa → nhập tiếng Anh`
+
+);
+
+}
+
+if(mode == "2"){
+
+currentPack.mode =
+"meaning_to_word";
+
+}
+
+else{
+
+currentPack.mode =
+"word_to_meaning";
+
+}
+
+currentIndex = 0;
+
+wrongWords = [];
+
+wrongWordsOnly = [];
+
+score = 0;
+
+totalCorrect = 0;
+
+studyWrongOnly = false;
+
+document.getElementById("userPage")
+.style.display = "none";
+
+document.getElementById("flashcardPage")
+.style.display = "block";
+
+document.getElementById("packTitle")
+.innerText =
+currentPack.name;
+
+showWord();
+
+}
+
+function backPacks(){
+
+document.getElementById("flashcardPage")
+.style.display = "none";
+
+document.getElementById("userPage")
+.style.display = "block";
+
+renderPacks();
+
+}
+
+
+/* =========================
+   SHOW WORD
+========================= */
+
+function showWord(){
+
+let word;
+
+if(studyWrongOnly){
+
+word =
+wrongWordsOnly[currentIndex];
+
+}
+
+else{
+
+word =
+currentPack.words[currentIndex];
+
+}
+
+if(!word){
+
+document.getElementById("hanzi")
+.innerText = "Không có từ";
+
+return;
+
+}
+
+if(currentPack.mode === "word_to_meaning"){
+
+if(currentPack.language === "english"){
+
+document.getElementById("hanzi")
+.innerText = word.word;
+
+}
+
+else{
+
+document.getElementById("hanzi")
+.innerText = word.hanzi;
+
+}
+
+}
+
+else{
+
+document.getElementById("hanzi")
+.innerText =
+word.meaning;
+
+}
+
+document.getElementById("answer")
+.value = "";
+
+document.getElementById("result")
+.innerText = "";
+
+document.getElementById("meaning")
+.innerText = "";
+
+document.getElementById("score")
+.innerText = score;
+
+}
+
+
+/* =========================
+   CHECK
+========================= */
+
+function checkAnswer(){
+
+let input =
+document.getElementById("answer")
+.value
+.trim()
+.toLowerCase();
+
+let word;
+
+if(studyWrongOnly){
+
+word =
+wrongWordsOnly[currentIndex];
+
+}
+
+else{
+
+word =
+currentPack.words[currentIndex];
+
+}
+
+let correctAnswer = "";
+
+if(currentPack.mode === "word_to_meaning"){
+
+if(currentPack.language === "english"){
+
+correctAnswer =
+word.meaning.toLowerCase();
+
+}
+
+else{
+
+correctAnswer =
+word.hanzi;
+
+}
+
+}
+
+else{
+
+if(currentPack.language === "english"){
+
+correctAnswer =
+word.word.toLowerCase();
+
+}
+
+else{
+
+correctAnswer =
+word.hanzi;
+
+}
+
+}
+
+if(input === correctAnswer){
+
+document.getElementById("result")
+.innerHTML = "✅ Đúng!";
+
+document.getElementById("meaning")
+.innerHTML =
+"Đáp án: "
++ correctAnswer;
+
+score++;
+totalCorrect++;
+
+if(studyWrongOnly){
+
+wrongWordsOnly.splice(currentIndex,1);
+
+if(wrongWordsOnly.length === 0){
+
+alert(
+"🎉 Đã học xong từ sai!"
+);
+
+studyWrongOnly = false;
+
+showWord();
+
+return;
+
+}
+
+}
+
+else{
+
+currentPack.learned++;
+
+}
+
+saveData();
+
+setTimeout(()=>{
+
+if(!studyWrongOnly){
+
+currentIndex++;
+
+if(currentIndex >= currentPack.words.length){
+
+currentIndex = 0;
+
+}
+
+}
+
+showWord();
+
+},1000);
+
+}
+
+else{
+
+document.getElementById("result")
+.innerHTML = "❌ Sai rồi!";
+
+document.getElementById("meaning")
+.innerHTML =
+"Đáp án: "
++ correctAnswer;
+
+wrongWords.push(word);
+
+if(studyWrongOnly){
+
+wrongWordsOnly.push(word);
+
+wrongWordsOnly.splice(currentIndex,1);
+
+}
+
+else{
+
+currentPack.words.push(word);
+
+currentPack.words.splice(currentIndex,1);
+
+}
+
+}
+
+}
+
+
+/* =========================
+   ADD WORD
+========================= */
+
+function addWordToCurrentPack(){
+
+let wordInput =
+document.getElementById("newWord")
+.value
+.trim();
+
+let meaning =
+document.getElementById("newMeaning")
+.value
+.trim();
+
+if(wordInput === "" || meaning === ""){
+
+alert("Nhập đầy đủ!");
+
+return;
+
+}
+
+if(currentPack.language === "english"){
+
+currentPack.words.push({
+
+word:wordInput,
+meaning:meaning
+
+});
+
+}
+
+else{
+
+currentPack.words.push({
+
+hanzi:wordInput,
+meaning:meaning
+
+});
+
+}
+
+saveData();
+
+document.getElementById("newWord")
+.value = "";
+
+document.getElementById("newMeaning")
+.value = "";
+
+alert("Đã thêm từ!");
+
+}
+
+
+/* =========================
+   FINISH
+========================= */
+
+function finishStudy(){
+
+let total =
+totalCorrect + wrongWords.length;
+
+let text = "";
+
+text +=
+"📊 KẾT QUẢ HỌC\n\n";
+
+text +=
+"✅ Đúng: "
++ totalCorrect
++ "\n";
+
+text +=
+"❌ Sai: "
++ wrongWords.length
++ "\n";
+
+text +=
+"📚 Tổng: "
++ total
++ "\n\n";
+
+if(wrongWords.length > 0){
+
+text +=
+"⚠️ TỪ ĐÃ SAI:\n\n";
+
+wrongWords.forEach((w,index)=>{
+
+let wordText =
+w.hanzi || w.word;
+
+text +=
+(index + 1)
++ ". "
++ wordText
++ " = "
++ w.meaning
++ "\n";
+
+});
+
+}
+
+else{
+
+text +=
+"🎉 Không có từ sai!";
+
+}
+
+alert(text);
+
+}
+
+
+/* =========================
+   WRONG MODE
+========================= */
+
+function startWrongWordsMode(){
+
+if(wrongWords.length === 0){
+
+alert("Không có từ sai!");
+
+return;
+
+}
+
+studyWrongOnly = true;
+
+wrongWordsOnly =
+[...wrongWords];
+
+currentIndex = 0;
+
+showWord();
+
+}
+
+
+/* =========================
+   ENTER
+========================= */
+
+document
+.getElementById("answer")
+.addEventListener("keypress",function(e){
+
+if(e.key === "Enter"){
+
+checkAnswer();
+
+}
+
+});
+
+
+/* =========================
+   START
+========================= */
+
+renderUsers();
+
+</script>
+
+</body>
+</html>

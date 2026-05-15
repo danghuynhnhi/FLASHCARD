@@ -318,23 +318,19 @@ export function EditPackScreen({ userId, packId, packName: initialPackName, pack
                       />
                     </div>
                     <div className="flex gap-2 justify-end">
-                      <Button
-                        size="sm"
+                      <button
                         onClick={() => handleSaveEdit(w.id)}
                         disabled={updateWord.isPending}
-                        className="h-8 px-3 gap-1"
+                        className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 disabled:opacity-50"
                       >
-                        <Check className="h-3.5 w-3.5" />
-                        {updateWord.isPending ? "Đang lưu..." : "Lưu"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
+                        <Check className="h-3.5 w-3.5" /> Lưu
+                      </button>
+                      <button
                         onClick={handleCancelEdit}
-                        className="h-8 px-3 gap-1"
+                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
                       >
                         <XIcon className="h-3.5 w-3.5" /> Huỷ
-                      </Button>
+                      </button>
                     </div>
                   </div>
                 ) : (

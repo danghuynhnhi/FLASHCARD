@@ -1,49 +1,32 @@
 import { useState } from "react";
 import {
   useListPacks,
-  useUpdatePack,
   useDeletePack,
   getListPacksQueryKey,
   PackWithCount,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ChevronLeft, Plus, Pencil, Trash2 } from "lucide-react";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
 
 interface PacksScreenProps {
   userId: number;
   userName: string;
   onBack: () => void;
   onCreatePack: () => void;
+  onEditPack: (packId: number, packName: string, packLanguage: string) => void;
   onStudy: (packId: number, packName: string, packLanguage: string) => void;
 }
 
-export function PacksScreen({ userId, userName, onBack, onCreatePack, onStudy }: PacksScreenProps) {
+export function PacksScreen({ userId, userName, onBack, onCreatePack, onEditPack, onStudy }: PacksScreenProps) {
   const qc = useQueryClient();
   const { data: packs = [], isLoading } = useListPacks(userId);
-  const updatePack = useUpdatePack();
   const deletePack = useDeletePack();
 
-  const [editingPack, setEditingPack] = useState<{ id: number; newName: string } | null>(null);
   const [deletingPack, setDeletingPack] = useState<{ id: number; name: string } | null>(null);
-  const { toast } = useToast();
 
   const invalidate = () => qc.invalidateQueries({ queryKey: getListPacksQueryKey(userId) });
-
-  const handleRename = () => {
-    if (!editingPack || !editingPack.newName.trim()) return;
-    updatePack.mutate(
-      { packId: editingPack.id, data: { name: editingPack.newName.trim() } },
-      {
-        onSuccess: () => { setEditingPack(null); invalidate(); },
-        onError: () => toast({ title: "Lỗi", description: "Không thể đổi tên", variant: "destructive" }),
-      }
-    );
-  };
 
   const handleDelete = () => {
     if (!deletingPack) return;
@@ -72,7 +55,7 @@ export function PacksScreen({ userId, userName, onBack, onCreatePack, onStudy }:
           <div className="flex opacity-0 group-hover:opacity-100 transition-opacity gap-1 -mt-1 -mr-1">
             <Button
               variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground"
-              onClick={() => setEditingPack({ id: pack.id, newName: pack.name })}
+              onClick={() => onEditPack(pack.id, pack.name, pack.language)}
               data-testid={`button-edit-pack-${pack.id}`}
             >
               <Pencil className="h-3.5 w-3.5" />
@@ -151,26 +134,6 @@ export function PacksScreen({ userId, userName, onBack, onCreatePack, onStudy }:
           {englishPacks.length > 0 && <PackSection label="Tiếng Anh" sectionPacks={englishPacks} />}
         </div>
       )}
-
-      <Dialog open={!!editingPack} onOpenChange={(open) => !open && setEditingPack(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Đổi tên bộ từ</DialogTitle></DialogHeader>
-          <div className="py-4">
-            <Label>Tên mới</Label>
-            <Input
-              value={editingPack?.newName || ""}
-              onChange={(e) => setEditingPack((p) => p ? { ...p, newName: e.target.value } : null)}
-              className="mt-2"
-              autoFocus
-              onKeyDown={(e) => e.key === "Enter" && handleRename()}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingPack(null)}>Hủy</Button>
-            <Button onClick={handleRename} disabled={updatePack.isPending}>Lưu</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={!!deletingPack} onOpenChange={(open) => !open && setDeletingPack(null)}>
         <DialogContent>

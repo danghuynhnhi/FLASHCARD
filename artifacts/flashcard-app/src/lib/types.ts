@@ -6,6 +6,7 @@ export type ViewState =
   | { view: "users" }
   | { view: "packs"; userId: number; userName: string }
   | { view: "create-pack"; userId: number; userName: string }
+  | { view: "edit-pack"; userId: number; userName: string; packId: number; packName: string; packLanguage: string }
   | { view: "study"; userId: number; userName: string; packId: number; packName: string; packLanguage: string }
   | {
       view: "results";

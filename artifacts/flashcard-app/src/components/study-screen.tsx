@@ -1,16 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import {
   useListWords,
-  useCreateWord,
   useUpdatePack,
-  getListWordsQueryKey,
   getListPacksQueryKey,
   VocabWord,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, Plus, ArrowRight } from "lucide-react";
+import { ChevronLeft, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { StudyMode } from "@/lib/types";
 
@@ -39,9 +37,6 @@ export function StudyScreen({ packId, packName, packLanguage, onBack, onFinish }
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [score, setScore] = useState(0);
-
-  const [newWord, setNewWord] = useState("");
-  const [newMeaning, setNewMeaning] = useState("");
 
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -118,21 +113,6 @@ export function StudyScreen({ packId, packName, packLanguage, onBack, onFinish }
     onFinish(score, wrongWords, initialTotal, mode!);
   };
 
-  const handleAddWord = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newWord.trim() || !newMeaning.trim()) return;
-    createWord.mutate(
-      { packId, data: { term: newWord.trim(), meaning: newMeaning.trim() } },
-      {
-        onSuccess: () => {
-          setNewWord(""); setNewMeaning("");
-          qc.invalidateQueries({ queryKey: getListWordsQueryKey(packId) });
-          toast({ title: "Đã thêm từ mới" });
-        },
-      }
-    );
-  };
-
   if (isLoading) return <div className="py-12 text-center text-muted-foreground text-sm">Đang tải...</div>;
 
   if (!mode) {
@@ -165,16 +145,6 @@ export function StudyScreen({ packId, packName, packLanguage, onBack, onFinish }
           ))}
         </div>
 
-        <div className="bg-card border border-border rounded-lg p-5 mt-2">
-          <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase mb-3">Thêm từ mới</p>
-          <form onSubmit={handleAddWord} className="flex gap-2">
-            <Input value={newWord} onChange={(e) => setNewWord(e.target.value)} placeholder={isChinese ? "Chữ Hán..." : "Từ..."} className="flex-1 h-9 text-sm" data-testid="input-new-word" />
-            <Input value={newMeaning} onChange={(e) => setNewMeaning(e.target.value)} placeholder="Nghĩa..." className="flex-1 h-9 text-sm" data-testid="input-new-meaning" />
-            <Button type="submit" size="sm" className="h-9" disabled={createWord.isPending} data-testid="button-add-word">
-              <Plus className="h-4 w-4" />
-            </Button>
-          </form>
-        </div>
       </div>
     );
   }

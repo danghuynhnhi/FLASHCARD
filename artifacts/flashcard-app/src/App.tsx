@@ -4,6 +4,7 @@ import { VocabWord } from "@workspace/api-client-react";
 import { UsersScreen } from "@/components/users-screen";
 import { PacksScreen } from "@/components/packs-screen";
 import { CreatePackScreen } from "@/components/create-pack-screen";
+import { EditPackScreen } from "@/components/edit-pack-screen";
 import { StudyScreen } from "@/components/study-screen";
 import { ResultsScreen } from "@/components/results-screen";
 
@@ -28,6 +29,9 @@ function App() {
             onCreatePack={() =>
               setViewState({ view: "create-pack", userId: viewState.userId, userName: viewState.userName })
             }
+            onEditPack={(packId, packName, packLanguage) =>
+              setViewState({ view: "edit-pack", userId: viewState.userId, userName: viewState.userName, packId, packName, packLanguage })
+            }
             onStudy={(packId, packName, packLanguage) =>
               setViewState({
                 view: "study",
@@ -48,6 +52,17 @@ function App() {
               setViewState({ view: "packs", userId: viewState.userId, userName: viewState.userName })
             }
             onSaved={() =>
+              setViewState({ view: "packs", userId: viewState.userId, userName: viewState.userName })
+            }
+          />
+        )}
+        {viewState.view === "edit-pack" && (
+          <EditPackScreen
+            userId={viewState.userId}
+            packId={viewState.packId}
+            packName={viewState.packName}
+            packLanguage={viewState.packLanguage}
+            onBack={() =>
               setViewState({ view: "packs", userId: viewState.userId, userName: viewState.userName })
             }
           />

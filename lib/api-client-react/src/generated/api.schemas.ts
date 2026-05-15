@@ -8,3 +8,62 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface UserWithCount {
+  id: number;
+  name: string;
+  packCount: number;
+}
+
+export interface UserInput {
+  /** @minLength 1 */
+  name: string;
+}
+
+export interface UserUpdate {
+  /** @minLength 1 */
+  name: string;
+}
+
+export interface PackWithCount {
+  id: number;
+  userId: number;
+  name: string;
+  language: string;
+  learned: number;
+  wordCount: number;
+}
+
+export type PackInputLanguage =
+  (typeof PackInputLanguage)[keyof typeof PackInputLanguage];
+
+export const PackInputLanguage = {
+  chinese: "chinese",
+  english: "english",
+} as const;
+
+export interface PackInput {
+  /** @minLength 1 */
+  name: string;
+  language: PackInputLanguage;
+}
+
+export interface PackUpdate {
+  /** @minLength 1 */
+  name?: string;
+  learned?: number;
+}
+
+export interface VocabWord {
+  id: number;
+  packId: number;
+  term: string;
+  meaning: string;
+}
+
+export interface WordInput {
+  /** @minLength 1 */
+  term: string;
+  /** @minLength 1 */
+  meaning: string;
+}

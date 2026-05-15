@@ -8,9 +8,141 @@
 import * as zod from "zod";
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
+});
+
+/**
+ * @summary List all users
+ */
+export const ListUsersResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  packCount: zod.number(),
+});
+export const ListUsersResponse = zod.array(ListUsersResponseItem);
+
+/**
+ * @summary Create a user
+ */
+
+export const CreateUserBody = zod.object({
+  name: zod.string().min(1),
+});
+
+/**
+ * @summary Rename a user
+ */
+export const UpdateUserParams = zod.object({
+  userId: zod.coerce.number(),
+});
+
+export const UpdateUserBody = zod.object({
+  name: zod.string().min(1),
+});
+
+export const UpdateUserResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  packCount: zod.number(),
+});
+
+/**
+ * @summary Delete a user
+ */
+export const DeleteUserParams = zod.object({
+  userId: zod.coerce.number(),
+});
+
+/**
+ * @summary List packs for a user
+ */
+export const ListPacksParams = zod.object({
+  userId: zod.coerce.number(),
+});
+
+export const ListPacksResponseItem = zod.object({
+  id: zod.number(),
+  userId: zod.number(),
+  name: zod.string(),
+  language: zod.string(),
+  learned: zod.number(),
+  wordCount: zod.number(),
+});
+export const ListPacksResponse = zod.array(ListPacksResponseItem);
+
+/**
+ * @summary Create a pack
+ */
+export const CreatePackParams = zod.object({
+  userId: zod.coerce.number(),
+});
+
+export const CreatePackBody = zod.object({
+  name: zod.string().min(1),
+  language: zod.enum(["chinese", "english"]),
+});
+
+/**
+ * @summary Update a pack (rename or update learned count)
+ */
+export const UpdatePackParams = zod.object({
+  packId: zod.coerce.number(),
+});
+
+export const UpdatePackBody = zod.object({
+  name: zod.string().min(1).optional(),
+  learned: zod.number().optional(),
+});
+
+export const UpdatePackResponse = zod.object({
+  id: zod.number(),
+  userId: zod.number(),
+  name: zod.string(),
+  language: zod.string(),
+  learned: zod.number(),
+  wordCount: zod.number(),
+});
+
+/**
+ * @summary Delete a pack
+ */
+export const DeletePackParams = zod.object({
+  packId: zod.coerce.number(),
+});
+
+/**
+ * @summary List words in a pack
+ */
+export const ListWordsParams = zod.object({
+  packId: zod.coerce.number(),
+});
+
+export const ListWordsResponseItem = zod.object({
+  id: zod.number(),
+  packId: zod.number(),
+  term: zod.string(),
+  meaning: zod.string(),
+});
+export const ListWordsResponse = zod.array(ListWordsResponseItem);
+
+/**
+ * @summary Add a word to a pack
+ */
+export const CreateWordParams = zod.object({
+  packId: zod.coerce.number(),
+});
+
+export const CreateWordBody = zod.object({
+  term: zod.string().min(1),
+  meaning: zod.string().min(1),
+});
+
+/**
+ * @summary Delete a word
+ */
+export const DeleteWordParams = zod.object({
+  wordId: zod.coerce.number(),
 });

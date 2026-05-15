@@ -10,13 +10,19 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: users
+    description: Flashcard users
+  - name: packs
+    description: Vocabulary packs
+  - name: words
+    description: Vocabulary words
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +30,323 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all users
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserWithCount"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserWithCount"
+        "409":
+          description: Name already taken
+
+  /users/{userId}:
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Rename a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserWithCount"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Delete a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /users/{userId}/packs:
+    get:
+      operationId: listPacks
+      tags: [packs]
+      summary: List packs for a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of packs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PackWithCount"
+    post:
+      operationId: createPack
+      tags: [packs]
+      summary: Create a pack
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PackInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PackWithCount"
+
+  /packs/{packId}:
+    patch:
+      operationId: updatePack
+      tags: [packs]
+      summary: Update a pack (rename or update learned count)
+      parameters:
+        - name: packId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PackUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PackWithCount"
+        "404":
+          description: Not found
+    delete:
+      operationId: deletePack
+      tags: [packs]
+      summary: Delete a pack
+      parameters:
+        - name: packId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /packs/{packId}/words:
+    get:
+      operationId: listWords
+      tags: [words]
+      summary: List words in a pack
+      parameters:
+        - name: packId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of words
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VocabWord"
+    post:
+      operationId: createWord
+      tags: [words]
+      summary: Add a word to a pack
+      parameters:
+        - name: packId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WordInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VocabWord"
+
+  /words/{wordId}:
+    delete:
+      operationId: deleteWord
+      tags: [words]
+      summary: Delete a word
+      parameters:
+        - name: wordId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    UserWithCount:
+      type: object
+      required: [id, name, packCount]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        packCount:
+          type: integer
+
+    UserInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+
+    UserUpdate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+
+    PackWithCount:
+      type: object
+      required: [id, userId, name, language, learned, wordCount]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        name:
+          type: string
+        language:
+          type: string
+        learned:
+          type: integer
+        wordCount:
+          type: integer
+
+    PackInput:
+      type: object
+      required: [name, language]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        language:
+          type: string
+          enum: [chinese, english]
+
+    PackUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        learned:
+          type: integer
+
+    VocabWord:
+      type: object
+      required: [id, packId, term, meaning]
+      properties:
+        id:
+          type: integer
+        packId:
+          type: integer
+        term:
+          type: string
+        meaning:
+          type: string
+
+    WordInput:
+      type: object
+      required: [term, meaning]
+      properties:
+        term:
+          type: string
+          minLength: 1
+        meaning:
+          type: string
+          minLength: 1

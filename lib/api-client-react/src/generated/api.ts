@@ -5,18 +5,31 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  HealthStatus,
+  PackInput,
+  PackUpdate,
+  PackWithCount,
+  UserInput,
+  UserUpdate,
+  UserWithCount,
+  VocabWord,
+  WordInput,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -25,7 +38,6 @@ type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const getHealthCheckUrl = () => {
@@ -99,3 +111,926 @@ export function useHealthCheck<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List all users
+ */
+export const getListUsersUrl = () => {
+  return `/api/users`;
+};
+
+export const listUsers = async (
+  options?: RequestInit,
+): Promise<UserWithCount[]> => {
+  return customFetch<UserWithCount[]>(getListUsersUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListUsersQueryKey = () => {
+  return [`/api/users`] as const;
+};
+
+export const getListUsersQueryOptions = <
+  TData = Awaited<ReturnType<typeof listUsers>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listUsers>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListUsersQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listUsers>>> = ({
+    signal,
+  }) => listUsers({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listUsers>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListUsersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listUsers>>
+>;
+export type ListUsersQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all users
+ */
+
+export function useListUsers<
+  TData = Awaited<ReturnType<typeof listUsers>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listUsers>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListUsersQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a user
+ */
+export const getCreateUserUrl = () => {
+  return `/api/users`;
+};
+
+export const createUser = async (
+  userInput: UserInput,
+  options?: RequestInit,
+): Promise<UserWithCount> => {
+  return customFetch<UserWithCount>(getCreateUserUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(userInput),
+  });
+};
+
+export const getCreateUserMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createUser>>,
+    TError,
+    { data: BodyType<UserInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createUser>>,
+  TError,
+  { data: BodyType<UserInput> },
+  TContext
+> => {
+  const mutationKey = ["createUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createUser>>,
+    { data: BodyType<UserInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createUser(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createUser>>
+>;
+export type CreateUserMutationBody = BodyType<UserInput>;
+export type CreateUserMutationError = ErrorType<void>;
+
+/**
+ * @summary Create a user
+ */
+export const useCreateUser = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createUser>>,
+    TError,
+    { data: BodyType<UserInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createUser>>,
+  TError,
+  { data: BodyType<UserInput> },
+  TContext
+> => {
+  return useMutation(getCreateUserMutationOptions(options));
+};
+
+/**
+ * @summary Rename a user
+ */
+export const getUpdateUserUrl = (userId: number) => {
+  return `/api/users/${userId}`;
+};
+
+export const updateUser = async (
+  userId: number,
+  userUpdate: UserUpdate,
+  options?: RequestInit,
+): Promise<UserWithCount> => {
+  return customFetch<UserWithCount>(getUpdateUserUrl(userId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(userUpdate),
+  });
+};
+
+export const getUpdateUserMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateUser>>,
+    TError,
+    { userId: number; data: BodyType<UserUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateUser>>,
+  TError,
+  { userId: number; data: BodyType<UserUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateUser>>,
+    { userId: number; data: BodyType<UserUpdate> }
+  > = (props) => {
+    const { userId, data } = props ?? {};
+
+    return updateUser(userId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateUser>>
+>;
+export type UpdateUserMutationBody = BodyType<UserUpdate>;
+export type UpdateUserMutationError = ErrorType<void>;
+
+/**
+ * @summary Rename a user
+ */
+export const useUpdateUser = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateUser>>,
+    TError,
+    { userId: number; data: BodyType<UserUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateUser>>,
+  TError,
+  { userId: number; data: BodyType<UserUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateUserMutationOptions(options));
+};
+
+/**
+ * @summary Delete a user
+ */
+export const getDeleteUserUrl = (userId: number) => {
+  return `/api/users/${userId}`;
+};
+
+export const deleteUser = async (
+  userId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteUserUrl(userId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteUserMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteUser>>,
+    TError,
+    { userId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteUser>>,
+  TError,
+  { userId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteUser"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteUser>>,
+    { userId: number }
+  > = (props) => {
+    const { userId } = props ?? {};
+
+    return deleteUser(userId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteUserMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteUser>>
+>;
+
+export type DeleteUserMutationError = ErrorType<void>;
+
+/**
+ * @summary Delete a user
+ */
+export const useDeleteUser = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteUser>>,
+    TError,
+    { userId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteUser>>,
+  TError,
+  { userId: number },
+  TContext
+> => {
+  return useMutation(getDeleteUserMutationOptions(options));
+};
+
+/**
+ * @summary List packs for a user
+ */
+export const getListPacksUrl = (userId: number) => {
+  return `/api/users/${userId}/packs`;
+};
+
+export const listPacks = async (
+  userId: number,
+  options?: RequestInit,
+): Promise<PackWithCount[]> => {
+  return customFetch<PackWithCount[]>(getListPacksUrl(userId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPacksQueryKey = (userId: number) => {
+  return [`/api/users/${userId}/packs`] as const;
+};
+
+export const getListPacksQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPacks>>,
+  TError = ErrorType<unknown>,
+>(
+  userId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPacks>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPacksQueryKey(userId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listPacks>>> = ({
+    signal,
+  }) => listPacks(userId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!userId,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof listPacks>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
+};
+
+export type ListPacksQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPacks>>
+>;
+export type ListPacksQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List packs for a user
+ */
+
+export function useListPacks<
+  TData = Awaited<ReturnType<typeof listPacks>>,
+  TError = ErrorType<unknown>,
+>(
+  userId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPacks>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPacksQueryOptions(userId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a pack
+ */
+export const getCreatePackUrl = (userId: number) => {
+  return `/api/users/${userId}/packs`;
+};
+
+export const createPack = async (
+  userId: number,
+  packInput: PackInput,
+  options?: RequestInit,
+): Promise<PackWithCount> => {
+  return customFetch<PackWithCount>(getCreatePackUrl(userId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(packInput),
+  });
+};
+
+export const getCreatePackMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPack>>,
+    TError,
+    { userId: number; data: BodyType<PackInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createPack>>,
+  TError,
+  { userId: number; data: BodyType<PackInput> },
+  TContext
+> => {
+  const mutationKey = ["createPack"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createPack>>,
+    { userId: number; data: BodyType<PackInput> }
+  > = (props) => {
+    const { userId, data } = props ?? {};
+
+    return createPack(userId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreatePackMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createPack>>
+>;
+export type CreatePackMutationBody = BodyType<PackInput>;
+export type CreatePackMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a pack
+ */
+export const useCreatePack = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPack>>,
+    TError,
+    { userId: number; data: BodyType<PackInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createPack>>,
+  TError,
+  { userId: number; data: BodyType<PackInput> },
+  TContext
+> => {
+  return useMutation(getCreatePackMutationOptions(options));
+};
+
+/**
+ * @summary Update a pack (rename or update learned count)
+ */
+export const getUpdatePackUrl = (packId: number) => {
+  return `/api/packs/${packId}`;
+};
+
+export const updatePack = async (
+  packId: number,
+  packUpdate: PackUpdate,
+  options?: RequestInit,
+): Promise<PackWithCount> => {
+  return customFetch<PackWithCount>(getUpdatePackUrl(packId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(packUpdate),
+  });
+};
+
+export const getUpdatePackMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePack>>,
+    TError,
+    { packId: number; data: BodyType<PackUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updatePack>>,
+  TError,
+  { packId: number; data: BodyType<PackUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updatePack"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updatePack>>,
+    { packId: number; data: BodyType<PackUpdate> }
+  > = (props) => {
+    const { packId, data } = props ?? {};
+
+    return updatePack(packId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdatePackMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updatePack>>
+>;
+export type UpdatePackMutationBody = BodyType<PackUpdate>;
+export type UpdatePackMutationError = ErrorType<void>;
+
+/**
+ * @summary Update a pack (rename or update learned count)
+ */
+export const useUpdatePack = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePack>>,
+    TError,
+    { packId: number; data: BodyType<PackUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updatePack>>,
+  TError,
+  { packId: number; data: BodyType<PackUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdatePackMutationOptions(options));
+};
+
+/**
+ * @summary Delete a pack
+ */
+export const getDeletePackUrl = (packId: number) => {
+  return `/api/packs/${packId}`;
+};
+
+export const deletePack = async (
+  packId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeletePackUrl(packId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeletePackMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePack>>,
+    TError,
+    { packId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deletePack>>,
+  TError,
+  { packId: number },
+  TContext
+> => {
+  const mutationKey = ["deletePack"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deletePack>>,
+    { packId: number }
+  > = (props) => {
+    const { packId } = props ?? {};
+
+    return deletePack(packId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeletePackMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deletePack>>
+>;
+
+export type DeletePackMutationError = ErrorType<void>;
+
+/**
+ * @summary Delete a pack
+ */
+export const useDeletePack = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePack>>,
+    TError,
+    { packId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deletePack>>,
+  TError,
+  { packId: number },
+  TContext
+> => {
+  return useMutation(getDeletePackMutationOptions(options));
+};
+
+/**
+ * @summary List words in a pack
+ */
+export const getListWordsUrl = (packId: number) => {
+  return `/api/packs/${packId}/words`;
+};
+
+export const listWords = async (
+  packId: number,
+  options?: RequestInit,
+): Promise<VocabWord[]> => {
+  return customFetch<VocabWord[]>(getListWordsUrl(packId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListWordsQueryKey = (packId: number) => {
+  return [`/api/packs/${packId}/words`] as const;
+};
+
+export const getListWordsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listWords>>,
+  TError = ErrorType<unknown>,
+>(
+  packId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listWords>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListWordsQueryKey(packId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listWords>>> = ({
+    signal,
+  }) => listWords(packId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!packId,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof listWords>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
+};
+
+export type ListWordsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listWords>>
+>;
+export type ListWordsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List words in a pack
+ */
+
+export function useListWords<
+  TData = Awaited<ReturnType<typeof listWords>>,
+  TError = ErrorType<unknown>,
+>(
+  packId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listWords>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListWordsQueryOptions(packId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add a word to a pack
+ */
+export const getCreateWordUrl = (packId: number) => {
+  return `/api/packs/${packId}/words`;
+};
+
+export const createWord = async (
+  packId: number,
+  wordInput: WordInput,
+  options?: RequestInit,
+): Promise<VocabWord> => {
+  return customFetch<VocabWord>(getCreateWordUrl(packId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(wordInput),
+  });
+};
+
+export const getCreateWordMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createWord>>,
+    TError,
+    { packId: number; data: BodyType<WordInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createWord>>,
+  TError,
+  { packId: number; data: BodyType<WordInput> },
+  TContext
+> => {
+  const mutationKey = ["createWord"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createWord>>,
+    { packId: number; data: BodyType<WordInput> }
+  > = (props) => {
+    const { packId, data } = props ?? {};
+
+    return createWord(packId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateWordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createWord>>
+>;
+export type CreateWordMutationBody = BodyType<WordInput>;
+export type CreateWordMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Add a word to a pack
+ */
+export const useCreateWord = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createWord>>,
+    TError,
+    { packId: number; data: BodyType<WordInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createWord>>,
+  TError,
+  { packId: number; data: BodyType<WordInput> },
+  TContext
+> => {
+  return useMutation(getCreateWordMutationOptions(options));
+};
+
+/**
+ * @summary Delete a word
+ */
+export const getDeleteWordUrl = (wordId: number) => {
+  return `/api/words/${wordId}`;
+};
+
+export const deleteWord = async (
+  wordId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteWordUrl(wordId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteWordMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteWord>>,
+    TError,
+    { wordId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteWord>>,
+  TError,
+  { wordId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteWord"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteWord>>,
+    { wordId: number }
+  > = (props) => {
+    const { wordId } = props ?? {};
+
+    return deleteWord(wordId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteWordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteWord>>
+>;
+
+export type DeleteWordMutationError = ErrorType<void>;
+
+/**
+ * @summary Delete a word
+ */
+export const useDeleteWord = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteWord>>,
+    TError,
+    { wordId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteWord>>,
+  TError,
+  { wordId: number },
+  TContext
+> => {
+  return useMutation(getDeleteWordMutationOptions(options));
+};

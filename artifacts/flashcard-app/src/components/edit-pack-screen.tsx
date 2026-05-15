@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { ChevronLeft, Plus, Trash2, ClipboardList, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { deleteWord } from "@workspace/api-client-react";
+import { toPinyin } from "@/lib/pinyin";
 
 interface EditPackScreenProps {
   userId: number;
@@ -265,7 +266,10 @@ export function EditPackScreen({ userId, packId, packName: initialPackName, pack
             {words.map((w, i) => (
               <li key={w.id} className="flex items-center gap-3 px-5 py-3 text-sm group" data-testid={`word-item-${w.id}`}>
                 <span className="text-muted-foreground text-xs w-5 shrink-0">{i + 1}</span>
-                <span className={`font-semibold flex-1 ${isChinese ? "font-serif text-base" : ""}`}>{w.term}</span>
+                <div className="flex-1 flex flex-col">
+                  <span className={`font-semibold ${isChinese ? "font-serif text-base" : ""}`}>{w.term}</span>
+                  {isChinese && <span className="text-xs text-muted-foreground tracking-wide">{toPinyin(w.term)}</span>}
+                </div>
                 <span className="text-muted-foreground flex-1">{w.meaning}</span>
                 <button
                   onClick={() => handleDeleteWord(w)}

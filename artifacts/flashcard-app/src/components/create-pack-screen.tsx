@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, Plus, X, ClipboardList, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { toPinyin } from "@/lib/pinyin";
 
 interface StagedWord {
   term: string;
@@ -271,7 +272,10 @@ export function CreatePackScreen({ userId, onBack, onSaved }: CreatePackScreenPr
             {words.map((w, i) => (
               <li key={i} className="flex items-center gap-3 px-5 py-3 text-sm group" data-testid={`word-item-${i}`}>
                 <span className="text-muted-foreground text-xs w-5 shrink-0">{i + 1}</span>
-                <span className={`font-semibold ${isChinese ? "font-serif text-base" : ""}`}>{w.term}</span>
+                <div className="flex flex-col">
+                  <span className={`font-semibold ${isChinese ? "font-serif text-base" : ""}`}>{w.term}</span>
+                  {isChinese && <span className="text-xs text-muted-foreground tracking-wide">{toPinyin(w.term)}</span>}
+                </div>
                 <span className="text-muted-foreground flex-1">{w.meaning}</span>
                 {w.example && <span className="text-muted-foreground text-xs italic hidden sm:block">{w.example}</span>}
                 <button

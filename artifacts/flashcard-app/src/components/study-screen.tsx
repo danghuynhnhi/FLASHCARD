@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { ChevronLeft, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { StudyMode } from "@/lib/types";
+import { toPinyin } from "@/lib/pinyin";
 
 interface StudyScreenProps {
   packId: number;
@@ -180,11 +181,18 @@ export function StudyScreen({ packId, packName, packLanguage, onBack, onFinish }
           feedback === "wrong" ? "border-red-400 bg-red-50/30" :
           "border-border"
         }`}>
-          <div className="min-h-[120px] flex items-center justify-center text-center">
+          <div className="min-h-[120px] flex flex-col items-center justify-center text-center gap-2">
             {mode === "word_to_meaning" && isChinese ? (
-              <span className="font-serif text-7xl font-bold text-foreground leading-none">
-                {displayWord}
-              </span>
+              <>
+                <span className="font-serif text-7xl font-bold text-foreground leading-none">
+                  {displayWord}
+                </span>
+                {displayWord && (
+                  <span className="text-base text-muted-foreground tracking-widest">
+                    {toPinyin(displayWord)}
+                  </span>
+                )}
+              </>
             ) : (
               <span className="text-4xl font-bold text-foreground">{displayWord}</span>
             )}
@@ -222,9 +230,16 @@ export function StudyScreen({ packId, packName, packLanguage, onBack, onFinish }
             />
 
             {feedback === "wrong" && (
-              <p className="text-center text-sm text-muted-foreground">
-                Đáp án: <span className="font-semibold text-foreground">{correctAnswer}</span>
-              </p>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">
+                  Đáp án: <span className="font-semibold text-foreground">{correctAnswer}</span>
+                </p>
+                {isChinese && mode === "meaning_to_word" && correctAnswer && (
+                  <p className="text-xs text-muted-foreground mt-0.5 tracking-widest">
+                    {toPinyin(correctAnswer)}
+                  </p>
+                )}
+              </div>
             )}
 
             {feedback === "wrong" ? (

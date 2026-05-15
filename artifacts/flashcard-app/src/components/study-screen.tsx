@@ -25,7 +25,6 @@ type Feedback = "correct" | "wrong" | null;
 export function StudyScreen({ packId, packName, packLanguage, onBack, onFinish }: StudyScreenProps) {
   const qc = useQueryClient();
   const { data: allWords = [], isLoading } = useListWords(packId);
-  const createWord = useCreateWord();
   const updatePack = useUpdatePack();
 
   const [mode, setMode] = useState<StudyMode | null>(null);

@@ -193,6 +193,15 @@ export function StudyScreen({ packId, packName, packLanguage, onBack, onFinish }
                   </span>
                 )}
               </>
+            ) : mode === "meaning_to_word" && isChinese ? (
+              <>
+                <span className="text-4xl font-bold text-foreground">{displayWord}</span>
+                {correctAnswer && (
+                  <span className="text-sm text-muted-foreground tracking-widest">
+                    {toPinyin(correctAnswer)}
+                  </span>
+                )}
+              </>
             ) : (
               <span className="text-4xl font-bold text-foreground">{displayWord}</span>
             )}

@@ -28,6 +28,28 @@ router.post("/packs/:packId/words", async (req, res) => {
   res.status(201).json(created);
 });
 
+router.patch("/words/:wordId", async (req, res) => {
+  const wordId = parseInt(req.params.wordId, 10);
+  const { term, meaning } = req.body;
+  const updates: Record<string, string> = {};
+  if (term) updates.term = term.trim();
+  if (meaning) updates.meaning = meaning.trim();
+  if (!Object.keys(updates).length) {
+    res.status(400).json({ error: "Nothing to update" });
+    return;
+  }
+  const [updated] = await db
+    .update(wordsTable)
+    .set(updates)
+    .where(eq(wordsTable.id, wordId))
+    .returning();
+  if (!updated) {
+    res.status(404).json({ error: "Word not found" });
+    return;
+  }
+  res.json(updated);
+});
+
 router.delete("/words/:wordId", async (req, res) => {
   const wordId = parseInt(req.params.wordId, 10);
   const deleted = await db

@@ -16,3 +16,4 @@ export * from "./userUpdate";
 export * from "./userWithCount";
 export * from "./vocabWord";
 export * from "./wordInput";
+export * from "./wordUpdate";

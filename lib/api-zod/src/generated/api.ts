@@ -141,6 +141,25 @@ export const CreateWordBody = zod.object({
 });
 
 /**
+ * @summary Update a word (term or meaning)
+ */
+export const UpdateWordParams = zod.object({
+  wordId: zod.coerce.number(),
+});
+
+export const UpdateWordBody = zod.object({
+  term: zod.string().min(1).optional(),
+  meaning: zod.string().min(1).optional(),
+});
+
+export const UpdateWordResponse = zod.object({
+  id: zod.number(),
+  packId: zod.number(),
+  term: zod.string(),
+  meaning: zod.string(),
+});
+
+/**
  * @summary Delete a word
  */
 export const DeleteWordParams = zod.object({

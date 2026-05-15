@@ -26,6 +26,7 @@ import type {
   UserWithCount,
   VocabWord,
   WordInput,
+  WordUpdate,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -949,6 +950,93 @@ export const useCreateWord = <
   TContext
 > => {
   return useMutation(getCreateWordMutationOptions(options));
+};
+
+/**
+ * @summary Update a word (term or meaning)
+ */
+export const getUpdateWordUrl = (wordId: number) => {
+  return `/api/words/${wordId}`;
+};
+
+export const updateWord = async (
+  wordId: number,
+  wordUpdate: WordUpdate,
+  options?: RequestInit,
+): Promise<VocabWord> => {
+  return customFetch<VocabWord>(getUpdateWordUrl(wordId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(wordUpdate),
+  });
+};
+
+export const getUpdateWordMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateWord>>,
+    TError,
+    { wordId: number; data: BodyType<WordUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateWord>>,
+  TError,
+  { wordId: number; data: BodyType<WordUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateWord"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateWord>>,
+    { wordId: number; data: BodyType<WordUpdate> }
+  > = (props) => {
+    const { wordId, data } = props ?? {};
+
+    return updateWord(wordId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateWordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateWord>>
+>;
+export type UpdateWordMutationBody = BodyType<WordUpdate>;
+export type UpdateWordMutationError = ErrorType<void>;
+
+/**
+ * @summary Update a word (term or meaning)
+ */
+export const useUpdateWord = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateWord>>,
+    TError,
+    { wordId: number; data: BodyType<WordUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateWord>>,
+  TError,
+  { wordId: number; data: BodyType<WordUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateWordMutationOptions(options));
 };
 
 /**

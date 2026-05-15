@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, Plus, Trash2, ClipboardList, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { deleteWord } from "@workspace/api-client-react";
+import { deleteWord, useUpdateWord } from "@workspace/api-client-react";
+import { Pencil, Check, X as XIcon } from "lucide-react";
 import { toPinyin } from "@/lib/pinyin";
 
 interface EditPackScreenProps {
@@ -54,6 +55,8 @@ export function EditPackScreen({ userId, packId, packName: initialPackName, pack
   const updatePack = useUpdatePack();
   const createWord = useCreateWord();
 
+  const updateWord = useUpdateWord();
+
   const [name, setName] = useState(initialPackName);
   const [nameSaved, setNameSaved] = useState(true);
   const [termInput, setTermInput] = useState("");
@@ -62,6 +65,9 @@ export function EditPackScreen({ userId, packId, packName: initialPackName, pack
   const [showBulk, setShowBulk] = useState(false);
   const [bulkText, setBulkText] = useState("");
   const [importing, setImporting] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editTerm, setEditTerm] = useState("");
+  const [editMeaning, setEditMeaning] = useState("");
   const { toast } = useToast();
 
   const isChinese = packLanguage === "chinese";
@@ -123,10 +129,37 @@ export function EditPackScreen({ userId, packId, packName: initialPackName, pack
     toast({ title: `Đã thêm ${added} từ` });
   };
 
+  const handleStartEdit = (word: VocabWord) => {
+    setEditingId(word.id);
+    setEditTerm(word.term);
+    setEditMeaning(word.meaning);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditTerm("");
+    setEditMeaning("");
+  };
+
+  const handleSaveEdit = (wordId: number) => {
+    if (!editTerm.trim() || !editMeaning.trim()) return;
+    updateWord.mutate(
+      { wordId, data: { term: editTerm.trim(), meaning: editMeaning.trim() } },
+      {
+        onSuccess: () => {
+          invalidateWords();
+          handleCancelEdit();
+          toast({ title: "Đã lưu" });
+        },
+        onError: () => toast({ title: "Lỗi", description: "Không thể lưu từ", variant: "destructive" }),
+      }
+    );
+  };
+
   const handleDeleteWord = async (word: VocabWord) => {
     setDeletingId(word.id);
     try {
-      await deleteWord({ wordId: word.id });
+      await deleteWord(word.id);
       invalidateWords(); invalidatePacks();
     } catch {
       toast({ title: "Lỗi", description: "Không thể xóa từ", variant: "destructive" });
@@ -262,23 +295,71 @@ export function EditPackScreen({ userId, packId, packName: initialPackName, pack
         ) : words.length === 0 ? (
           <p className="px-5 pb-4 text-sm text-muted-foreground">Chưa có từ nào</p>
         ) : (
-          <ul className="divide-y divide-border max-h-64 overflow-y-auto">
+          <ul className="divide-y divide-border">
             {words.map((w, i) => (
-              <li key={w.id} className="flex items-center gap-3 px-5 py-3 text-sm group" data-testid={`word-item-${w.id}`}>
-                <span className="text-muted-foreground text-xs w-5 shrink-0">{i + 1}</span>
-                <div className="flex-1 flex flex-col">
-                  <span className={`font-semibold ${isChinese ? "font-serif text-base" : ""}`}>{w.term}</span>
-                  {isChinese && <span className="text-xs text-muted-foreground tracking-wide">{toPinyin(w.term)}</span>}
-                </div>
-                <span className="text-muted-foreground flex-1">{w.meaning}</span>
-                <button
-                  onClick={() => handleDeleteWord(w)}
-                  disabled={deletingId === w.id}
-                  className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
-                  data-testid={`button-delete-word-${w.id}`}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+              <li key={w.id} data-testid={`word-item-${w.id}`}>
+                {editingId === w.id ? (
+                  <div className="flex flex-col gap-2 px-5 py-3">
+                    <div className="flex gap-2">
+                      <Input
+                        value={editTerm}
+                        onChange={(e) => setEditTerm(e.target.value)}
+                        placeholder={isChinese ? "Chữ Hán..." : "Từ..."}
+                        className={`flex-1 h-9 text-sm ${isChinese ? "font-serif" : ""}`}
+                        autoFocus
+                        onKeyDown={(e) => { if (e.key === "Enter") handleSaveEdit(w.id); if (e.key === "Escape") handleCancelEdit(); }}
+                      />
+                      <Input
+                        value={editMeaning}
+                        onChange={(e) => setEditMeaning(e.target.value)}
+                        placeholder="Nghĩa..."
+                        className="flex-1 h-9 text-sm"
+                        onKeyDown={(e) => { if (e.key === "Enter") handleSaveEdit(w.id); if (e.key === "Escape") handleCancelEdit(); }}
+                      />
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => handleSaveEdit(w.id)}
+                        disabled={updateWord.isPending}
+                        className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 disabled:opacity-50"
+                      >
+                        <Check className="h-3.5 w-3.5" /> Lưu
+                      </button>
+                      <button
+                        onClick={handleCancelEdit}
+                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        <XIcon className="h-3.5 w-3.5" /> Huỷ
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 px-5 py-3 text-sm">
+                    <span className="text-muted-foreground text-xs w-5 shrink-0">{i + 1}</span>
+                    <div className="flex-1 flex flex-col min-w-0">
+                      <span className={`font-semibold truncate ${isChinese ? "font-serif text-base" : ""}`}>{w.term}</span>
+                      {isChinese && <span className="text-xs text-muted-foreground tracking-wide">{toPinyin(w.term)}</span>}
+                    </div>
+                    <span className="text-muted-foreground flex-1 truncate">{w.meaning}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => handleStartEdit(w)}
+                        className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                        data-testid={`button-edit-word-${w.id}`}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteWord(w)}
+                        disabled={deletingId === w.id}
+                        className="p-1 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+                        data-testid={`button-delete-word-${w.id}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </li>
             ))}
           </ul>

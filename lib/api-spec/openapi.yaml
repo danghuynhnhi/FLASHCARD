@@ -238,6 +238,31 @@ paths:
                 $ref: "#/components/schemas/VocabWord"
 
   /words/{wordId}:
+    patch:
+      operationId: updateWord
+      tags: [words]
+      summary: Update a word (term or meaning)
+      parameters:
+        - name: wordId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WordUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VocabWord"
+        "404":
+          description: Not found
     delete:
       operationId: deleteWord
       tags: [words]
@@ -343,6 +368,16 @@ components:
     WordInput:
       type: object
       required: [term, meaning]
+      properties:
+        term:
+          type: string
+          minLength: 1
+        meaning:
+          type: string
+          minLength: 1
+
+    WordUpdate:
+      type: object
       properties:
         term:
           type: string

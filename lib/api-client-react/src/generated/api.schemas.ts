@@ -67,3 +67,10 @@ export interface WordInput {
   /** @minLength 1 */
   meaning: string;
 }
+
+export interface WordUpdate {
+  /** @minLength 1 */
+  term?: string;
+  /** @minLength 1 */
+  meaning?: string;
+}

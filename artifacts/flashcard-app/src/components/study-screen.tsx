@@ -8,38 +8,37 @@ import {
   VocabWord,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ChevronLeft, Plus, Check, X, RefreshCw, Layers } from "lucide-react";
+import { ChevronLeft, Plus, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { StudyMode } from "@/lib/types";
 
 interface StudyScreenProps {
   packId: number;
   packName: string;
   packLanguage: string;
   onBack: () => void;
+  onFinish: (score: number, wrongWords: VocabWord[], totalWords: number, mode: StudyMode) => void;
 }
 
-type StudyMode = "word_to_meaning" | "meaning_to_word" | null;
 type Feedback = "correct" | "wrong" | null;
 
-export function StudyScreen({ packId, packName, packLanguage, onBack }: StudyScreenProps) {
+export function StudyScreen({ packId, packName, packLanguage, onBack, onFinish }: StudyScreenProps) {
   const qc = useQueryClient();
   const { data: allWords = [], isLoading } = useListWords(packId);
   const createWord = useCreateWord();
   const updatePack = useUpdatePack();
 
-  const [mode, setMode] = useState<StudyMode>(null);
+  const [mode, setMode] = useState<StudyMode | null>(null);
   const [queue, setQueue] = useState<VocabWord[]>([]);
+  const [initialTotal, setInitialTotal] = useState(0);
+  const [answered, setAnswered] = useState(0);
   const [wrongWords, setWrongWords] = useState<VocabWord[]>([]);
   const [currentWord, setCurrentWord] = useState<VocabWord | null>(null);
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [score, setScore] = useState(0);
-  const [showSummary, setShowSummary] = useState(false);
-  const [isWrongWordsOnly, setIsWrongWordsOnly] = useState(false);
 
   const [newWord, setNewWord] = useState("");
   const [newMeaning, setNewMeaning] = useState("");
@@ -56,66 +55,67 @@ export function StudyScreen({ packId, packName, packLanguage, onBack }: StudyScr
 
   const handleStart = (selectedMode: StudyMode) => {
     if (allWords.length === 0) {
-      toast({ title: "Bộ từ trống", description: "Hãy thêm từ mới trước khi học nhé!" });
+      toast({ title: "Bộ từ trống", description: "Hãy thêm từ trước khi học!" });
       return;
     }
     const shuffled = [...allWords].sort(() => Math.random() - 0.5);
     setMode(selectedMode);
     setQueue(shuffled);
+    setInitialTotal(shuffled.length);
     setCurrentWord(shuffled[0] || null);
     setScore(0);
+    setAnswered(0);
     setWrongWords([]);
-    setIsWrongWordsOnly(false);
+    setFeedback(null);
+    setAnswer("");
   };
 
   const checkAnswer = () => {
     if (!currentWord || !answer.trim() || feedback) return;
 
-    let isCorrect = false;
-    if (mode === "word_to_meaning") {
-      isCorrect = answer.trim().toLowerCase() === currentWord.meaning.toLowerCase();
-    } else {
-      isCorrect = answer.trim().toLowerCase() === currentWord.term.toLowerCase();
-    }
+    const correct =
+      mode === "word_to_meaning"
+        ? answer.trim().toLowerCase() === currentWord.meaning.toLowerCase()
+        : answer.trim().toLowerCase() === currentWord.term.toLowerCase();
 
-    setFeedback(isCorrect ? "correct" : "wrong");
+    setFeedback(correct ? "correct" : "wrong");
+    setAnswered((a) => a + 1);
 
-    setTimeout(() => {
-      setFeedback(null);
-      setAnswer("");
-
-      if (isCorrect) {
-        const newScore = score + 1;
-        setScore(newScore);
-
-        if (!isWrongWordsOnly) {
-          updatePack.mutate(
-            { packId, data: { learned: newScore } },
-            { onSuccess: () => qc.invalidateQueries({ queryKey: getListPacksQueryKey() }) }
-          );
-        } else {
-          setWrongWords((prev) => prev.filter((w) => w.id !== currentWord.id));
-        }
-
+    if (correct) {
+      const newScore = score + 1;
+      setScore(newScore);
+      updatePack.mutate(
+        { packId, data: { learned: newScore } },
+        { onSuccess: () => qc.invalidateQueries({ queryKey: getListPacksQueryKey() }) }
+      );
+      setTimeout(() => {
+        setFeedback(null);
+        setAnswer("");
         const newQueue = queue.slice(1);
         setQueue(newQueue);
-        setCurrentWord(newQueue[0] || null);
         if (newQueue.length === 0) {
-          setShowSummary(true);
+          onFinish(newScore, wrongWords, initialTotal, mode!);
+        } else {
+          setCurrentWord(newQueue[0]);
         }
-      } else {
-        if (!isWrongWordsOnly && !wrongWords.find((w) => w.id === currentWord.id)) {
-          setWrongWords((prev) => [...prev, currentWord]);
-        }
-        const newQueue = [...queue.slice(1), currentWord];
-        setQueue(newQueue);
-        setCurrentWord(newQueue[0] || null);
+      }, 800);
+    } else {
+      if (!wrongWords.find((w) => w.id === currentWord.id)) {
+        setWrongWords((prev) => [...prev, currentWord]);
       }
-    }, 1000);
+      const newQueue = [...queue.slice(1), currentWord];
+      setQueue(newQueue);
+    }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") checkAnswer();
+  const handleNextAfterWrong = () => {
+    setFeedback(null);
+    setAnswer("");
+    setCurrentWord(queue[0] || null);
+  };
+
+  const handleFinish = () => {
+    onFinish(score, wrongWords, initialTotal, mode!);
   };
 
   const handleAddWord = (e: React.FormEvent) => {
@@ -125,305 +125,160 @@ export function StudyScreen({ packId, packName, packLanguage, onBack }: StudyScr
       { packId, data: { term: newWord.trim(), meaning: newMeaning.trim() } },
       {
         onSuccess: () => {
-          setNewWord("");
-          setNewMeaning("");
+          setNewWord(""); setNewMeaning("");
           qc.invalidateQueries({ queryKey: getListWordsQueryKey(packId) });
           toast({ title: "Đã thêm từ mới" });
-        },
-        onError: () => {
-          toast({ title: "Lỗi", description: "Không thể thêm từ", variant: "destructive" });
         },
       }
     );
   };
 
-  const startWrongWordsMode = () => {
-    setIsWrongWordsOnly(true);
-    setShowSummary(false);
-    const shuffled = [...wrongWords].sort(() => Math.random() - 0.5);
-    setQueue(shuffled);
-    setCurrentWord(shuffled[0] || null);
-    setScore(0);
-  };
-
-  const resetSession = () => {
-    setMode(null);
-    setShowSummary(false);
-    setQueue([]);
-    setCurrentWord(null);
-    setScore(0);
-    setWrongWords([]);
-    setIsWrongWordsOnly(false);
-    setAnswer("");
-    setFeedback(null);
-  };
-
-  const getDisplayWord = () => {
-    if (!currentWord) return "";
-    return mode === "word_to_meaning" ? currentWord.term : currentWord.meaning;
-  };
-
-  const getExpectedAnswer = () => {
-    if (!currentWord) return "";
-    return mode === "word_to_meaning" ? currentWord.meaning : currentWord.term;
-  };
-
-  if (isLoading) {
-    return (
-      <div className="py-12 text-center text-muted-foreground">Đang tải từ vựng...</div>
-    );
-  }
+  if (isLoading) return <div className="py-12 text-center text-muted-foreground text-sm">Đang tải...</div>;
 
   if (!mode) {
     return (
-      <div className="w-full max-w-2xl mx-auto flex flex-col gap-6 animate-in fade-in slide-in-from-right-8 duration-300">
-        <div className="flex items-center gap-4 py-4">
-          <Button variant="ghost" size="icon" onClick={onBack} className="rounded-full shrink-0" data-testid="button-study-back">
-            <ChevronLeft className="h-6 w-6" />
-          </Button>
+      <div className="w-full max-w-xl mx-auto flex flex-col gap-5">
+        <div className="flex items-center gap-3 pt-4">
+          <button onClick={onBack} className="text-muted-foreground hover:text-foreground transition-colors">
+            <ChevronLeft className="h-5 w-5" />
+          </button>
           <div>
-            <h2 className="text-2xl font-serif font-bold text-foreground">{packName}</h2>
-            <p className="text-muted-foreground text-sm">{allWords.length} từ • Chọn chế độ học</p>
+            <h2 className="text-xl font-bold text-foreground">{packName}</h2>
+            <p className="text-xs text-muted-foreground">{allWords.length} từ vựng</p>
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-2 gap-4">
-          <Card
-            className="cursor-pointer hover:border-primary/50 transition-colors group"
-            onClick={() => handleStart("word_to_meaning")}
-            data-testid="mode-word-to-meaning"
-          >
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center h-40 gap-4">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Layers className="h-6 w-6 text-primary" />
-              </div>
-              <span className="font-medium text-lg">
-                {isChinese ? "Hiện chữ Hán → viết nghĩa" : "Hiện tiếng Anh → nhập nghĩa"}
-              </span>
-            </CardContent>
-          </Card>
-          <Card
-            className="cursor-pointer hover:border-primary/50 transition-colors group"
-            onClick={() => handleStart("meaning_to_word")}
-            data-testid="mode-meaning-to-word"
-          >
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center h-40 gap-4">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <RefreshCw className="h-6 w-6 text-primary" />
-              </div>
-              <span className="font-medium text-lg">
-                {isChinese ? "Hiện nghĩa → viết chữ Hán" : "Hiện nghĩa → nhập tiếng Anh"}
-              </span>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { mode: "word_to_meaning" as StudyMode, label: isChinese ? "Từ → Nghĩa" : "Từ → Nghĩa", sub: isChinese ? "Nhìn chữ Hán, viết nghĩa" : "Nhìn từ, viết nghĩa" },
+            { mode: "meaning_to_word" as StudyMode, label: isChinese ? "Nghĩa → Từ" : "Nghĩa → Từ", sub: isChinese ? "Nhìn nghĩa, viết chữ Hán" : "Nhìn nghĩa, viết từ" },
+          ].map((opt) => (
+            <button
+              key={opt.mode}
+              onClick={() => handleStart(opt.mode)}
+              className="bg-card border border-border rounded-lg p-5 text-left hover:border-primary/60 hover:shadow-sm transition-all group"
+              data-testid={`mode-${opt.mode}`}
+            >
+              <p className="font-semibold text-foreground group-hover:text-primary transition-colors">{opt.label}</p>
+              <p className="text-xs text-muted-foreground mt-1">{opt.sub}</p>
+            </button>
+          ))}
         </div>
 
-        <div className="mt-8">
-          <h3 className="font-semibold text-lg mb-4">Thêm từ mới</h3>
-          <Card className="bg-card/50">
-            <CardContent className="pt-6">
-              <form onSubmit={handleAddWord} className="flex flex-col sm:flex-row gap-3">
-                <Input
-                  value={newWord}
-                  onChange={(e) => setNewWord(e.target.value)}
-                  placeholder={isChinese ? "Chữ Hán..." : "Từ vựng..."}
-                  className="flex-1"
-                  data-testid="input-new-word"
-                />
-                <Input
-                  value={newMeaning}
-                  onChange={(e) => setNewMeaning(e.target.value)}
-                  placeholder="Nghĩa..."
-                  className="flex-1"
-                  data-testid="input-new-meaning"
-                />
-                <Button type="submit" disabled={createWord.isPending} data-testid="button-add-word">
-                  <Plus className="h-4 w-4 mr-2" /> Thêm
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+        <div className="bg-card border border-border rounded-lg p-5 mt-2">
+          <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase mb-3">Thêm từ mới</p>
+          <form onSubmit={handleAddWord} className="flex gap-2">
+            <Input value={newWord} onChange={(e) => setNewWord(e.target.value)} placeholder={isChinese ? "Chữ Hán..." : "Từ..."} className="flex-1 h-9 text-sm" data-testid="input-new-word" />
+            <Input value={newMeaning} onChange={(e) => setNewMeaning(e.target.value)} placeholder="Nghĩa..." className="flex-1 h-9 text-sm" data-testid="input-new-meaning" />
+            <Button type="submit" size="sm" className="h-9" disabled={createWord.isPending} data-testid="button-add-word">
+              <Plus className="h-4 w-4" />
+            </Button>
+          </form>
         </div>
       </div>
     );
   }
 
+  const modeLabel = mode === "word_to_meaning" ? "Từ → Nghĩa" : "Nghĩa → Từ";
+  const displayWord = mode === "word_to_meaning" ? currentWord?.term : currentWord?.meaning;
+  const correctAnswer = mode === "word_to_meaning" ? currentWord?.meaning : currentWord?.term;
+  const progressIndex = initialTotal - queue.length + (feedback === "correct" ? 0 : 0);
+
   return (
-    <div className="w-full max-w-2xl mx-auto flex flex-col h-[calc(100vh-8rem)] animate-in fade-in zoom-in-95 duration-300">
-      <div className="flex items-center justify-between py-4 mb-4">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={resetSession} className="rounded-full">
-            <ChevronLeft className="h-6 w-6" />
-          </Button>
-          <div>
-            <h2 className="text-xl font-serif font-bold text-foreground">{packName}</h2>
-            <p className="text-xs text-muted-foreground">
-              {mode === "word_to_meaning"
-                ? isChinese ? "Từ → Nghĩa" : "Từ → Nghĩa"
-                : isChinese ? "Nghĩa → Từ" : "Nghĩa → Từ"}
-            </p>
-          </div>
-        </div>
+    <div className="w-full max-w-xl mx-auto flex flex-col gap-4">
+      <div className="flex items-center justify-between pt-4">
         <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">{queue.length > 0 ? `${queue.length} còn lại` : ""}</span>
-          <div className="bg-primary/10 text-primary px-4 py-1.5 rounded-full font-medium text-sm">
-            Điểm: {score}
+          <button
+            onClick={() => handleFinish()}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <div>
+            <p className="font-semibold text-foreground text-sm">{packName}</p>
+            <p className="text-xs text-muted-foreground">{modeLabel}</p>
           </div>
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-medium text-foreground">Điểm: {score}</p>
+          <p className="text-xs text-muted-foreground">{answered + 1}/{initialTotal}</p>
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col">
-        {currentWord ? (
-          <Card
-            className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${
-              feedback === "correct"
-                ? "bg-green-50/50 border-green-200"
-                : feedback === "wrong"
-                ? "bg-red-50/50 border-red-200"
-                : "bg-card"
-            }`}
-          >
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center relative">
-              {feedback && (
-                <div
-                  className={`absolute top-6 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full font-bold text-lg animate-in zoom-in slide-in-from-top-4 flex items-center gap-2 ${
-                    feedback === "correct" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                  }`}
-                >
-                  {feedback === "correct" ? (
-                    <><Check className="h-5 w-5" /> Đúng!</>
-                  ) : (
-                    <><X className="h-5 w-5" /> Sai rồi!</>
-                  )}
-                </div>
-              )}
-
-              <div className={`transition-all duration-300 ${feedback ? "opacity-50 scale-95 mt-12" : "scale-100"}`}>
-                {mode === "word_to_meaning" && isChinese ? (
-                  <div className="text-[5rem] md:text-[7rem] leading-none font-serif font-bold text-foreground mb-4">
-                    {getDisplayWord()}
-                  </div>
-                ) : (
-                  <div className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-                    {getDisplayWord()}
-                  </div>
-                )}
-              </div>
-
-              {feedback === "wrong" && (
-                <div className="mt-8 text-xl font-medium animate-in fade-in slide-in-from-bottom-4">
-                  Đáp án đúng: <span className="text-primary font-bold">{getExpectedAnswer()}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="p-6 bg-muted/30 border-t border-border/50">
-              <div className="flex gap-3 max-w-md mx-auto">
-                <Input
-                  ref={inputRef}
-                  value={answer}
-                  onChange={(e) => setAnswer(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Nhập đáp án của bạn..."
-                  className="h-14 text-lg text-center"
-                  disabled={!!feedback}
-                  data-testid="input-answer"
-                  autoFocus
-                  autoComplete="off"
-                />
-                <Button
-                  onClick={checkAnswer}
-                  disabled={!!feedback || !answer.trim()}
-                  className="h-14 px-8 text-lg"
-                  data-testid="button-check"
-                >
-                  Kiểm tra
-                </Button>
-              </div>
-            </div>
-          </Card>
-        ) : (
-          <Card className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-card/50">
-            <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
-              <Check className="h-10 w-10 text-primary" />
-            </div>
-            <h2 className="text-3xl font-serif font-bold mb-4">Hoàn thành!</h2>
-            <p className="text-muted-foreground text-lg mb-8 max-w-md">
-              Bạn đã ôn tập xong các từ trong lượt này.
-            </p>
-            <Button onClick={() => setShowSummary(true)} size="lg" className="px-8 h-12 text-lg">
-              Xem kết quả
-            </Button>
-          </Card>
-        )}
-
-        {queue.length > 0 && currentWord && (
-          <div className="mt-6 flex justify-end">
-            <Button variant="outline" onClick={() => setShowSummary(true)} data-testid="button-finish-early">
-              Hoàn thành buổi học
-            </Button>
-          </div>
-        )}
-      </div>
-
-      <Dialog open={showSummary} onOpenChange={(open) => !open && setShowSummary(false)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-serif text-center mb-2">Kết quả buổi học</DialogTitle>
-          </DialogHeader>
-
-          <div className="py-6 space-y-6">
-            <div className="flex justify-center gap-8">
-              <div className="text-center">
-                <div className="text-4xl font-bold text-green-600 mb-1">{score}</div>
-                <div className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Đúng</div>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold text-red-500 mb-1">{wrongWords.length}</div>
-                <div className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Sai</div>
-              </div>
-            </div>
-
-            {wrongWords.length > 0 && (
-              <div className="bg-muted/50 rounded-xl p-4 border border-border">
-                <h4 className="font-semibold mb-3 flex items-center gap-2">
-                  <X className="h-4 w-4 text-red-500" /> Các từ cần ôn lại
-                </h4>
-                <div className="max-h-40 overflow-y-auto space-y-2 pr-2">
-                  {wrongWords.map((w) => (
-                    <div
-                      key={w.id}
-                      className="flex justify-between items-center py-2 border-b border-border/50 last:border-0"
-                    >
-                      <span className="font-medium">{w.term}</span>
-                      <span className="text-muted-foreground">{w.meaning}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+      {currentWord && (
+        <div className={`bg-card border rounded-lg p-6 flex flex-col gap-4 transition-colors ${
+          feedback === "correct" ? "border-green-400 bg-green-50/30" :
+          feedback === "wrong" ? "border-red-400 bg-red-50/30" :
+          "border-border"
+        }`}>
+          <div className="min-h-[120px] flex items-center justify-center text-center">
+            {mode === "word_to_meaning" && isChinese ? (
+              <span className="font-serif text-7xl font-bold text-foreground leading-none">
+                {displayWord}
+              </span>
+            ) : (
+              <span className="text-4xl font-bold text-foreground">{displayWord}</span>
             )}
           </div>
 
-          <DialogFooter className="flex-col sm:flex-col gap-3">
-            {wrongWords.length > 0 && (
+          {feedback === "wrong" && (
+            <div className="text-sm text-red-600 text-center font-medium -mt-2">
+              Sai rồi! Từ này sẽ xuất hiện lại sau.
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2">
+            <Input
+              ref={inputRef}
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  if (feedback === "wrong") handleNextAfterWrong();
+                  else checkAnswer();
+                }
+              }}
+              placeholder={
+                mode === "word_to_meaning"
+                  ? isChinese ? "Nhập nghĩa tiếng Việt..." : "Nhập nghĩa..."
+                  : isChinese ? "Nhập chữ Hán..." : "Nhập từ tiếng Anh..."
+              }
+              className={`h-11 text-center text-base ${
+                feedback === "correct" ? "border-green-400 focus-visible:ring-green-400" :
+                feedback === "wrong" ? "border-red-400 focus-visible:ring-red-400" : ""
+              }`}
+              disabled={feedback === "correct"}
+              data-testid="input-answer"
+              autoComplete="off"
+            />
+
+            {feedback === "wrong" && (
+              <p className="text-center text-sm text-muted-foreground">
+                Đáp án: <span className="font-semibold text-foreground">{correctAnswer}</span>
+              </p>
+            )}
+
+            {feedback === "wrong" ? (
+              <Button onClick={handleNextAfterWrong} variant="outline" className="w-full h-10 gap-2" data-testid="button-next-word">
+                Từ tiếp theo <ArrowRight className="h-4 w-4" />
+              </Button>
+            ) : (
               <Button
-                onClick={startWrongWordsMode}
-                className="w-full h-12 text-base"
-                data-testid="button-study-wrong-only"
+                onClick={checkAnswer}
+                disabled={!answer.trim() || feedback === "correct"}
+                className="w-full h-10"
+                data-testid="button-check"
               >
-                Chỉ học từ sai
+                Kiểm tra
               </Button>
             )}
-            <Button
-              onClick={resetSession}
-              variant={wrongWords.length > 0 ? "outline" : "default"}
-              className="w-full h-12 text-base"
-            >
-              Về trang bộ từ
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </div>
+      )}
+
+      <Button variant="outline" onClick={handleFinish} className="w-full h-9 text-sm" data-testid="button-finish">
+        Hoàn thành buổi học
+      </Button>
     </div>
   );
 }

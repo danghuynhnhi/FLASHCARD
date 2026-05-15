@@ -1,74 +1,46 @@
 import { useState } from "react";
 import {
   useListPacks,
-  useCreatePack,
   useUpdatePack,
   useDeletePack,
   getListPacksQueryKey,
+  PackWithCount,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { PackWithCount } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ChevronLeft, Plus, Pencil, Trash2, Library } from "lucide-react";
+import { ChevronLeft, Plus, Pencil, Trash2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 
 interface PacksScreenProps {
   userId: number;
   userName: string;
   onBack: () => void;
+  onCreatePack: () => void;
   onStudy: (packId: number, packName: string, packLanguage: string) => void;
 }
 
-export function PacksScreen({ userId, userName, onBack, onStudy }: PacksScreenProps) {
+export function PacksScreen({ userId, userName, onBack, onCreatePack, onStudy }: PacksScreenProps) {
   const qc = useQueryClient();
   const { data: packs = [], isLoading } = useListPacks(userId);
-  const createPack = useCreatePack();
   const updatePack = useUpdatePack();
   const deletePack = useDeletePack();
 
-  const [newPackName, setNewPackName] = useState("");
-  const [newPackLang, setNewPackLang] = useState<"chinese" | "english">("chinese");
-  const [editingPack, setEditingPack] = useState<{ id: number; oldName: string; newName: string } | null>(null);
+  const [editingPack, setEditingPack] = useState<{ id: number; newName: string } | null>(null);
   const [deletingPack, setDeletingPack] = useState<{ id: number; name: string } | null>(null);
   const { toast } = useToast();
 
   const invalidate = () => qc.invalidateQueries({ queryKey: getListPacksQueryKey(userId) });
-
-  const handleCreate = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPackName.trim()) return;
-    createPack.mutate(
-      { userId, data: { name: newPackName.trim(), language: newPackLang } },
-      {
-        onSuccess: () => {
-          setNewPackName("");
-          invalidate();
-        },
-        onError: () => {
-          toast({ title: "Lỗi", description: "Không thể tạo bộ từ", variant: "destructive" });
-        },
-      }
-    );
-  };
 
   const handleRename = () => {
     if (!editingPack || !editingPack.newName.trim()) return;
     updatePack.mutate(
       { packId: editingPack.id, data: { name: editingPack.newName.trim() } },
       {
-        onSuccess: () => {
-          setEditingPack(null);
-          invalidate();
-        },
-        onError: () => {
-          toast({ title: "Lỗi", description: "Không thể đổi tên", variant: "destructive" });
-        },
+        onSuccess: () => { setEditingPack(null); invalidate(); },
+        onError: () => toast({ title: "Lỗi", description: "Không thể đổi tên", variant: "destructive" }),
       }
     );
   };
@@ -77,194 +49,138 @@ export function PacksScreen({ userId, userName, onBack, onStudy }: PacksScreenPr
     if (!deletingPack) return;
     deletePack.mutate(
       { packId: deletingPack.id },
-      {
-        onSuccess: () => {
-          setDeletingPack(null);
-          invalidate();
-        },
-      }
+      { onSuccess: () => { setDeletingPack(null); invalidate(); } }
     );
   };
 
-  const hasChinese = packs.some((p) => p.language === "chinese");
-  const hasEnglish = packs.some((p) => p.language === "english");
-  const twoColumns = hasChinese && hasEnglish;
+  const chinesePacks = packs.filter((p) => p.language === "chinese");
+  const englishPacks = packs.filter((p) => p.language === "english");
+  const hasBoth = chinesePacks.length > 0 && englishPacks.length > 0;
 
   const PackCard = ({ pack }: { pack: PackWithCount }) => {
-    const progress = pack.wordCount > 0 ? Math.round((pack.learned / pack.wordCount) * 100) : 0;
+    const pct = pack.wordCount > 0 ? Math.round((pack.learned / pack.wordCount) * 100) : 0;
     return (
-      <Card
-        className="group hover:shadow-md transition-all duration-300 border-border/50 hover:border-primary/20 bg-card overflow-hidden"
+      <div
+        className="bg-card border border-border rounded-lg p-4 group hover:shadow-sm transition-all"
         data-testid={`card-pack-${pack.id}`}
       >
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div>
-              <CardTitle className="text-xl font-semibold group-hover:text-primary transition-colors">
-                {pack.name}
-              </CardTitle>
-              <CardDescription className="text-sm mt-1">
-                {pack.wordCount} từ • Đã học {progress}%
-              </CardDescription>
-            </div>
-            <div className="flex opacity-0 group-hover:opacity-100 transition-opacity -mt-1 -mr-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                onClick={() => setEditingPack({ id: pack.id, oldName: pack.name, newName: pack.name })}
-                data-testid={`button-edit-pack-${pack.id}`}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                onClick={() => setDeletingPack({ id: pack.id, name: pack.name })}
-                data-testid={`button-delete-pack-${pack.id}`}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+        <div className="flex items-start justify-between mb-1">
+          <div>
+            <p className="font-semibold text-foreground">{pack.name}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{pack.wordCount} từ vựng</p>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Progress value={progress} className="h-2" />
-          <Button
-            className="w-full shadow-sm hover:shadow"
-            onClick={() => onStudy(pack.id, pack.name, pack.language)}
-            data-testid={`button-study-pack-${pack.id}`}
-          >
-            Học ngay
-          </Button>
-        </CardContent>
-      </Card>
+          <div className="flex opacity-0 group-hover:opacity-100 transition-opacity gap-1 -mt-1 -mr-1">
+            <Button
+              variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground"
+              onClick={() => setEditingPack({ id: pack.id, newName: pack.name })}
+              data-testid={`button-edit-pack-${pack.id}`}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
+              onClick={() => setDeletingPack({ id: pack.id, name: pack.name })}
+              data-testid={`button-delete-pack-${pack.id}`}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="my-3">
+          <div className="flex justify-between items-center mb-1.5">
+            <span className="text-xs text-muted-foreground">Tốt nhất</span>
+            <span className="text-xs font-medium text-foreground">{pct}%</span>
+          </div>
+          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+
+        <Button
+          className="w-full h-9 text-sm"
+          onClick={() => onStudy(pack.id, pack.name, pack.language)}
+          data-testid={`button-study-pack-${pack.id}`}
+        >
+          Học ngay
+        </Button>
+      </div>
     );
   };
 
+  const PackSection = ({ label, sectionPacks }: { label: string; sectionPacks: PackWithCount[] }) => (
+    <div>
+      {hasBoth && (
+        <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase mb-3">{label}</p>
+      )}
+      <div className="grid gap-3 sm:grid-cols-2">
+        {sectionPacks.map((p) => <PackCard key={p.id} pack={p} />)}
+      </div>
+    </div>
+  );
+
   return (
-    <div className="w-full flex flex-col gap-6 animate-in fade-in slide-in-from-right-8 duration-300">
-      <div className="flex items-center gap-4 py-4">
-        <Button variant="ghost" size="icon" onClick={onBack} className="rounded-full shrink-0" data-testid="button-back-users">
-          <ChevronLeft className="h-6 w-6" />
-        </Button>
-        <div>
-          <h2 className="text-2xl font-serif font-bold text-foreground">Bộ từ của {userName}</h2>
-          <p className="text-muted-foreground text-sm">Chọn một bộ từ để bắt đầu ôn tập</p>
+    <div className="w-full flex flex-col gap-5">
+      <div className="flex items-center justify-between pt-4">
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} className="text-muted-foreground hover:text-foreground transition-colors" data-testid="button-back-users">
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <div>
+            <h2 className="text-xl font-bold text-foreground">{userName}</h2>
+            <p className="text-xs text-muted-foreground">Bộ từ vựng của bạn</p>
+          </div>
         </div>
+        <Button onClick={onCreatePack} className="h-9 px-4 gap-1.5 text-sm" data-testid="button-create-pack">
+          <Plus className="h-4 w-4" /> Tạo bộ mới
+        </Button>
       </div>
 
-      <Card className="bg-card/50 backdrop-blur-sm shadow-sm border-muted">
-        <CardContent className="pt-6">
-          <form onSubmit={handleCreate} className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 relative">
-              <Library className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                value={newPackName}
-                onChange={(e) => setNewPackName(e.target.value)}
-                placeholder="Tên bộ từ mới..."
-                className="pl-10 h-12 text-base bg-background/50 border-muted"
-                data-testid="input-new-pack"
-              />
-            </div>
-            <div className="w-full sm:w-[180px]">
-              <Select value={newPackLang} onValueChange={(val: "chinese" | "english") => setNewPackLang(val)}>
-                <SelectTrigger className="h-12 bg-background/50 border-muted" data-testid="select-pack-lang">
-                  <SelectValue placeholder="Ngôn ngữ" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="chinese">Tiếng Trung</SelectItem>
-                  <SelectItem value="english">Tiếng Anh</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button type="submit" className="h-12 px-6 gap-2 w-full sm:w-auto" disabled={createPack.isPending} data-testid="button-create-pack">
-              <Plus className="h-5 w-5" /> Tạo Bộ từ
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
       {isLoading ? (
-        <div className="py-12 text-center text-muted-foreground">Đang tải...</div>
+        <div className="py-12 text-center text-muted-foreground text-sm">Đang tải...</div>
       ) : packs.length === 0 ? (
-        <div className="py-16 text-center text-muted-foreground border-2 border-dashed rounded-xl border-muted">
-          Bạn chưa có bộ từ nào. Hãy tạo một bộ từ mới nhé!
+        <div className="py-16 text-center text-muted-foreground text-sm border-2 border-dashed border-border rounded-lg">
+          Chưa có bộ từ nào
         </div>
       ) : (
-        <div className={`grid gap-8 ${twoColumns ? "lg:grid-cols-2" : "grid-cols-1"}`}>
-          {hasChinese && (
-            <div className="space-y-4">
-              {twoColumns && (
-                <h3 className="text-lg font-semibold text-foreground/80 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-red-500/80"></span> Tiếng Trung
-                </h3>
-              )}
-              <div className={`grid gap-4 ${!twoColumns ? "sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-1 sm:grid-cols-2"}`}>
-                {packs.filter((p) => p.language === "chinese").map((pack) => (
-                  <PackCard key={pack.id} pack={pack} />
-                ))}
-              </div>
-            </div>
-          )}
-          {hasEnglish && (
-            <div className="space-y-4">
-              {twoColumns && (
-                <h3 className="text-lg font-semibold text-foreground/80 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-blue-500/80"></span> Tiếng Anh
-                </h3>
-              )}
-              <div className={`grid gap-4 ${!twoColumns ? "sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-1 sm:grid-cols-2"}`}>
-                {packs.filter((p) => p.language === "english").map((pack) => (
-                  <PackCard key={pack.id} pack={pack} />
-                ))}
-              </div>
-            </div>
-          )}
+        <div className="flex flex-col gap-6">
+          {chinesePacks.length > 0 && <PackSection label="Tiếng Trung" sectionPacks={chinesePacks} />}
+          {englishPacks.length > 0 && <PackSection label="Tiếng Anh" sectionPacks={englishPacks} />}
         </div>
       )}
 
       <Dialog open={!!editingPack} onOpenChange={(open) => !open && setEditingPack(null)}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Đổi tên bộ từ</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Đổi tên bộ từ</DialogTitle></DialogHeader>
           <div className="py-4">
-            <Label htmlFor="rename-pack">Tên mới</Label>
+            <Label>Tên mới</Label>
             <Input
-              id="rename-pack"
               value={editingPack?.newName || ""}
-              onChange={(e) => setEditingPack((prev) => (prev ? { ...prev, newName: e.target.value } : null))}
+              onChange={(e) => setEditingPack((p) => p ? { ...p, newName: e.target.value } : null)}
               className="mt-2"
-              data-testid="input-rename-pack"
               autoFocus
               onKeyDown={(e) => e.key === "Enter" && handleRename()}
             />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingPack(null)}>Hủy</Button>
-            <Button onClick={handleRename} disabled={updatePack.isPending} data-testid="button-confirm-rename-pack">
-              Lưu thay đổi
-            </Button>
+            <Button onClick={handleRename} disabled={updatePack.isPending}>Lưu</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={!!deletingPack} onOpenChange={(open) => !open && setDeletingPack(null)}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="text-destructive">Xóa bộ từ?</DialogTitle>
-          </DialogHeader>
-          <p className="py-4 text-muted-foreground">
-            Bạn có chắc chắn muốn xóa bộ từ{" "}
-            <span className="font-semibold text-foreground">{deletingPack?.name}</span>? Tất cả các từ sẽ bị mất.
+          <DialogHeader><DialogTitle>Xóa bộ từ?</DialogTitle></DialogHeader>
+          <p className="py-4 text-muted-foreground text-sm">
+            Xóa <span className="font-semibold text-foreground">{deletingPack?.name}</span>? Tất cả từ sẽ mất.
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeletingPack(null)}>Hủy</Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deletePack.isPending} data-testid="button-confirm-delete-pack">
-              Xóa bộ từ
-            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deletePack.isPending}>Xóa</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

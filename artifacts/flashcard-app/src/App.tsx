@@ -1,15 +1,18 @@
 import { useState } from "react";
-import { ViewState } from "@/lib/types";
+import { ViewState, StudyMode } from "@/lib/types";
+import { VocabWord } from "@workspace/api-client-react";
 import { UsersScreen } from "@/components/users-screen";
 import { PacksScreen } from "@/components/packs-screen";
+import { CreatePackScreen } from "@/components/create-pack-screen";
 import { StudyScreen } from "@/components/study-screen";
+import { ResultsScreen } from "@/components/results-screen";
 
 function App() {
   const [viewState, setViewState] = useState<ViewState>({ view: "users" });
 
   return (
-    <div className="min-h-[100dvh] w-full bg-background flex flex-col selection:bg-primary/20">
-      <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col">
+    <div className="min-h-[100dvh] w-full bg-background flex flex-col">
+      <main className="flex-1 max-w-3xl w-full mx-auto p-4 sm:p-6 flex flex-col">
         {viewState.view === "users" && (
           <UsersScreen
             onSelectUser={(userId, userName) =>
@@ -22,6 +25,9 @@ function App() {
             userId={viewState.userId}
             userName={viewState.userName}
             onBack={() => setViewState({ view: "users" })}
+            onCreatePack={() =>
+              setViewState({ view: "create-pack", userId: viewState.userId, userName: viewState.userName })
+            }
             onStudy={(packId, packName, packLanguage) =>
               setViewState({
                 view: "study",
@@ -34,16 +40,59 @@ function App() {
             }
           />
         )}
+        {viewState.view === "create-pack" && (
+          <CreatePackScreen
+            userId={viewState.userId}
+            userName={viewState.userName}
+            onBack={() =>
+              setViewState({ view: "packs", userId: viewState.userId, userName: viewState.userName })
+            }
+            onSaved={() =>
+              setViewState({ view: "packs", userId: viewState.userId, userName: viewState.userName })
+            }
+          />
+        )}
         {viewState.view === "study" && (
           <StudyScreen
             packId={viewState.packId}
             packName={viewState.packName}
             packLanguage={viewState.packLanguage}
             onBack={() =>
+              setViewState({ view: "packs", userId: viewState.userId, userName: viewState.userName })
+            }
+            onFinish={(score, wrongWords, totalWords, mode) =>
               setViewState({
-                view: "packs",
+                view: "results",
                 userId: viewState.userId,
                 userName: viewState.userName,
+                packId: viewState.packId,
+                packName: viewState.packName,
+                packLanguage: viewState.packLanguage,
+                score,
+                wrongWords,
+                totalWords,
+                mode,
+              })
+            }
+          />
+        )}
+        {viewState.view === "results" && (
+          <ResultsScreen
+            packName={viewState.packName}
+            score={viewState.score}
+            wrongWords={viewState.wrongWords}
+            totalWords={viewState.totalWords}
+            onHome={() =>
+              setViewState({ view: "packs", userId: viewState.userId, userName: viewState.userName })
+            }
+            onStudyAgain={() =>
+              setViewState({
+                view: "study",
+                userId: viewState.userId,
+                userName: viewState.userName,
+                packId: viewState.packId,
+                packName: viewState.packName,
+                packLanguage: viewState.packLanguage,
               })
             }
           />

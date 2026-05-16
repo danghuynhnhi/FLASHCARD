@@ -17,15 +17,17 @@ interface StudyScreenProps {
   packId: number;
   packName: string;
   packLanguage: string;
+  selectedWords?: VocabWord[];
   onBack: () => void;
   onFinish: (score: number, wrongWords: VocabWord[], totalWords: number, mode: StudyMode) => void;
 }
 
 type Feedback = "correct" | "wrong" | null;
 
-export function StudyScreen({ packId, packName, packLanguage, onBack, onFinish }: StudyScreenProps) {
+export function StudyScreen({ packId, packName, packLanguage, selectedWords: preselectedWords, onBack, onFinish }: StudyScreenProps) {
   const qc = useQueryClient();
-  const { data: allWords = [], isLoading } = useListWords(packId);
+  const { data: fetchedWords = [], isLoading } = useListWords(packId);
+  const allWords = preselectedWords ?? fetchedWords;
   const updatePack = useUpdatePack();
 
   const [mode, setMode] = useState<StudyMode | null>(null);

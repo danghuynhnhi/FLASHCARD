@@ -5,6 +5,7 @@ import { UsersScreen } from "@/components/users-screen";
 import { PacksScreen } from "@/components/packs-screen";
 import { CreatePackScreen } from "@/components/create-pack-screen";
 import { EditPackScreen } from "@/components/edit-pack-screen";
+import { WordSelectScreen } from "@/components/word-select-screen";
 import { StudyScreen } from "@/components/study-screen";
 import { ResultsScreen } from "@/components/results-screen";
 
@@ -34,7 +35,7 @@ function App() {
             }
             onStudy={(packId, packName, packLanguage) =>
               setViewState({
-                view: "study",
+                view: "word-select",
                 userId: viewState.userId,
                 userName: viewState.userName,
                 packId,
@@ -67,13 +68,42 @@ function App() {
             }
           />
         )}
-        {viewState.view === "study" && (
-          <StudyScreen
+        {viewState.view === "word-select" && (
+          <WordSelectScreen
             packId={viewState.packId}
             packName={viewState.packName}
             packLanguage={viewState.packLanguage}
             onBack={() =>
               setViewState({ view: "packs", userId: viewState.userId, userName: viewState.userName })
+            }
+            onStart={(selectedWords) =>
+              setViewState({
+                view: "study",
+                userId: viewState.userId,
+                userName: viewState.userName,
+                packId: viewState.packId,
+                packName: viewState.packName,
+                packLanguage: viewState.packLanguage,
+                selectedWords,
+              })
+            }
+          />
+        )}
+        {viewState.view === "study" && (
+          <StudyScreen
+            packId={viewState.packId}
+            packName={viewState.packName}
+            packLanguage={viewState.packLanguage}
+            selectedWords={viewState.selectedWords}
+            onBack={() =>
+              setViewState({
+                view: "word-select",
+                userId: viewState.userId,
+                userName: viewState.userName,
+                packId: viewState.packId,
+                packName: viewState.packName,
+                packLanguage: viewState.packLanguage,
+              })
             }
             onFinish={(score, wrongWords, totalWords, mode) =>
               setViewState({
@@ -94,6 +124,7 @@ function App() {
         {viewState.view === "results" && (
           <ResultsScreen
             packName={viewState.packName}
+            packLanguage={viewState.packLanguage}
             score={viewState.score}
             wrongWords={viewState.wrongWords}
             totalWords={viewState.totalWords}
@@ -102,12 +133,23 @@ function App() {
             }
             onStudyAgain={() =>
               setViewState({
+                view: "word-select",
+                userId: viewState.userId,
+                userName: viewState.userName,
+                packId: viewState.packId,
+                packName: viewState.packName,
+                packLanguage: viewState.packLanguage,
+              })
+            }
+            onStudyWrongWords={() =>
+              setViewState({
                 view: "study",
                 userId: viewState.userId,
                 userName: viewState.userName,
                 packId: viewState.packId,
                 packName: viewState.packName,
                 packLanguage: viewState.packLanguage,
+                selectedWords: viewState.wrongWords,
               })
             }
           />

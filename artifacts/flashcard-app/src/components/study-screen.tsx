@@ -65,13 +65,15 @@ export function StudyScreen({ packId, packName, packLanguage, onBack, onFinish }
     setAnswer("");
   };
 
+  const getCorrectAnswer = (word: VocabWord) => {
+    if (isChinese) return word.term;
+    return mode === "word_to_meaning" ? word.meaning : word.term;
+  };
+
   const checkAnswer = () => {
     if (!currentWord || !answer.trim() || feedback) return;
 
-    const correct =
-      mode === "word_to_meaning"
-        ? answer.trim().toLowerCase() === currentWord.meaning.toLowerCase()
-        : answer.trim().toLowerCase() === currentWord.term.toLowerCase();
+    const correct = answer.trim().toLowerCase() === getCorrectAnswer(currentWord).toLowerCase();
 
     setFeedback(correct ? "correct" : "wrong");
     setAnswered((a) => a + 1);
@@ -93,7 +95,7 @@ export function StudyScreen({ packId, packName, packLanguage, onBack, onFinish }
         } else {
           setCurrentWord(newQueue[0]);
         }
-      }, 800);
+      }, 1400);
     } else {
       if (!wrongWords.find((w) => w.id === currentWord.id)) {
         setWrongWords((prev) => [...prev, currentWord]);
@@ -130,8 +132,16 @@ export function StudyScreen({ packId, packName, packLanguage, onBack, onFinish }
 
         <div className="grid grid-cols-2 gap-3">
           {[
-            { mode: "word_to_meaning" as StudyMode, label: isChinese ? "Từ → Nghĩa" : "Từ → Nghĩa", sub: isChinese ? "Nhìn chữ Hán, viết nghĩa" : "Nhìn từ, viết nghĩa" },
-            { mode: "meaning_to_word" as StudyMode, label: isChinese ? "Nghĩa → Từ" : "Nghĩa → Từ", sub: isChinese ? "Nhìn nghĩa, viết chữ Hán" : "Nhìn nghĩa, viết từ" },
+            {
+              mode: "word_to_meaning" as StudyMode,
+              label: isChinese ? "Chữ → Chữ Hán" : "Từ → Nghĩa",
+              sub: isChinese ? "Nhìn chữ Hán, viết lại chữ Hán" : "Nhìn từ, viết nghĩa",
+            },
+            {
+              mode: "meaning_to_word" as StudyMode,
+              label: isChinese ? "Nghĩa → Chữ Hán" : "Nghĩa → Từ",
+              sub: isChinese ? "Nhìn nghĩa tiếng Việt, viết chữ Hán" : "Nhìn nghĩa, viết từ",
+            },
           ].map((opt) => (
             <button
               key={opt.mode}
@@ -144,15 +154,14 @@ export function StudyScreen({ packId, packName, packLanguage, onBack, onFinish }
             </button>
           ))}
         </div>
-
       </div>
     );
   }
 
-  const modeLabel = mode === "word_to_meaning" ? "Từ → Nghĩa" : "Nghĩa → Từ";
   const displayWord = mode === "word_to_meaning" ? currentWord?.term : currentWord?.meaning;
-  const correctAnswer = mode === "word_to_meaning" ? currentWord?.meaning : currentWord?.term;
-  const progressIndex = initialTotal - queue.length + (feedback === "correct" ? 0 : 0);
+  const modeLabel = mode === "word_to_meaning"
+    ? (isChinese ? "Chữ → Chữ Hán" : "Từ → Nghĩa")
+    : (isChinese ? "Nghĩa → Chữ Hán" : "Nghĩa → Từ");
 
   return (
     <div className="w-full max-w-xl mx-auto flex flex-col gap-4">
@@ -181,26 +190,34 @@ export function StudyScreen({ packId, packName, packLanguage, onBack, onFinish }
           feedback === "wrong" ? "border-red-400 bg-red-50/30" :
           "border-border"
         }`}>
-          <div className="min-h-[120px] flex flex-col items-center justify-center text-center gap-2">
+          {/* Question display — no pinyin here */}
+          <div className="min-h-[100px] flex items-center justify-center text-center">
             {mode === "word_to_meaning" && isChinese ? (
-              <>
-                <span className="font-serif text-7xl font-bold text-foreground leading-none">
-                  {displayWord}
-                </span>
-                {displayWord && (
-                  <span className="text-base text-muted-foreground tracking-widest">
-                    {toPinyin(displayWord)}
-                  </span>
-                )}
-              </>
+              <span className="font-serif text-7xl font-bold text-foreground leading-none">
+                {displayWord}
+              </span>
             ) : (
               <span className="text-4xl font-bold text-foreground">{displayWord}</span>
             )}
           </div>
 
-          {feedback === "wrong" && (
-            <div className="text-sm text-red-600 text-center font-medium -mt-2">
-              Sai rồi! Từ này sẽ xuất hiện lại sau.
+          {/* Review card shown after checking — always for Chinese */}
+          {feedback && isChinese && currentWord && (
+            <div className={`rounded-md px-4 py-3 flex flex-col items-center gap-1 text-center ${
+              feedback === "correct" ? "bg-green-100/60" : "bg-red-50/60"
+            }`}>
+              <span className="font-serif text-3xl font-bold text-foreground">{currentWord.term}</span>
+              <span className="text-sm text-muted-foreground tracking-widest">{toPinyin(currentWord.term)}</span>
+              <span className="text-sm text-foreground font-medium">{currentWord.meaning}</span>
+            </div>
+          )}
+
+          {/* Wrong feedback for non-Chinese packs */}
+          {feedback === "wrong" && !isChinese && (
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground">
+                Đáp án: <span className="font-semibold text-foreground">{currentWord.meaning}</span>
+              </p>
             </div>
           )}
 
@@ -216,31 +233,20 @@ export function StudyScreen({ packId, packName, packLanguage, onBack, onFinish }
                 }
               }}
               placeholder={
-                mode === "word_to_meaning"
-                  ? isChinese ? "Nhập nghĩa tiếng Việt..." : "Nhập nghĩa..."
-                  : isChinese ? "Nhập chữ Hán..." : "Nhập từ tiếng Anh..."
+                isChinese
+                  ? "Nhập chữ Hán..."
+                  : mode === "word_to_meaning"
+                    ? "Nhập nghĩa..."
+                    : "Nhập từ..."
               }
-              className={`h-11 text-center text-base ${
+              className={`h-11 text-center text-base font-serif ${
                 feedback === "correct" ? "border-green-400 focus-visible:ring-green-400" :
                 feedback === "wrong" ? "border-red-400 focus-visible:ring-red-400" : ""
               }`}
-              disabled={feedback === "correct"}
+              disabled={!!feedback}
               data-testid="input-answer"
               autoComplete="off"
             />
-
-            {feedback === "wrong" && (
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground">
-                  Đáp án: <span className="font-semibold text-foreground">{correctAnswer}</span>
-                </p>
-                {isChinese && mode === "meaning_to_word" && correctAnswer && (
-                  <p className="text-xs text-muted-foreground mt-0.5 tracking-widest">
-                    {toPinyin(correctAnswer)}
-                  </p>
-                )}
-              </div>
-            )}
 
             {feedback === "wrong" ? (
               <Button onClick={handleNextAfterWrong} variant="outline" className="w-full h-10 gap-2" data-testid="button-next-word">
@@ -249,7 +255,7 @@ export function StudyScreen({ packId, packName, packLanguage, onBack, onFinish }
             ) : (
               <Button
                 onClick={checkAnswer}
-                disabled={!answer.trim() || feedback === "correct"}
+                disabled={!answer.trim() || !!feedback}
                 className="w-full h-10"
                 data-testid="button-check"
               >

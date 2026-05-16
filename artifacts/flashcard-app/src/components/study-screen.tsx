@@ -41,6 +41,8 @@ export function StudyScreen({ packId, packName, packLanguage, selectedWords: pre
   const [score, setScore] = useState(0);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const advanceRef = useRef<(() => void) | null>(null);
+  const correctTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { toast } = useToast();
   const isChinese = packLanguage === "chinese";
 
@@ -49,6 +51,19 @@ export function StudyScreen({ packId, packName, packLanguage, selectedWords: pre
       inputRef.current.focus();
     }
   }, [currentWord, feedback]);
+
+  // Global Enter key handler: advances immediately regardless of delay / disabled input
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Enter") return;
+      const target = e.target as HTMLElement;
+      // If input is active (feedback is null), let the input's own handler fire
+      if (target === inputRef.current) return;
+      advanceRef.current?.();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const handleStart = (selectedMode: StudyMode) => {
     if (allWords.length === 0) {
@@ -65,6 +80,7 @@ export function StudyScreen({ packId, packName, packLanguage, selectedWords: pre
     setWrongWords([]);
     setFeedback(null);
     setAnswer("");
+    advanceRef.current = null;
   };
 
   const getCorrectAnswer = (word: VocabWord) => {
@@ -87,7 +103,10 @@ export function StudyScreen({ packId, packName, packLanguage, selectedWords: pre
         { packId, data: { learned: newScore } },
         { onSuccess: () => qc.invalidateQueries({ queryKey: getListPacksQueryKey() }) }
       );
-      setTimeout(() => {
+
+      const advance = () => {
+        if (correctTimerRef.current) { clearTimeout(correctTimerRef.current); correctTimerRef.current = null; }
+        advanceRef.current = null;
         setFeedback(null);
         setAnswer("");
         const newQueue = queue.slice(1);
@@ -97,20 +116,29 @@ export function StudyScreen({ packId, packName, packLanguage, selectedWords: pre
         } else {
           setCurrentWord(newQueue[0]);
         }
-      }, 1400);
+      };
+
+      advanceRef.current = advance;
+      correctTimerRef.current = setTimeout(advance, 800);
     } else {
       if (!wrongWords.find((w) => w.id === currentWord.id)) {
         setWrongWords((prev) => [...prev, currentWord]);
       }
       const newQueue = [...queue.slice(1), currentWord];
       setQueue(newQueue);
+
+      const nextAfterWrong = () => {
+        advanceRef.current = null;
+        setFeedback(null);
+        setAnswer("");
+        setCurrentWord(newQueue[0] || null);
+      };
+      advanceRef.current = nextAfterWrong;
     }
   };
 
   const handleNextAfterWrong = () => {
-    setFeedback(null);
-    setAnswer("");
-    setCurrentWord(queue[0] || null);
+    advanceRef.current?.();
   };
 
   const handleFinish = () => {

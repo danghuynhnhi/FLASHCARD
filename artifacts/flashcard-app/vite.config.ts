@@ -4,13 +4,8 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
-const rawPort = process.env.PORT ?? "3000";
-const port = Number(rawPort);
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
+const rawPort = process.env.PORT;
+
 
 const port = Number(rawPort);
 
@@ -25,7 +20,7 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    // runtimeErrorOverlay(),
+    runtimeErrorOverlay(),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [

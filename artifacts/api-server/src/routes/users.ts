@@ -19,8 +19,9 @@ router.get("/users", async (req, res) => {
 });
 
 router.post("/users", async (req, res) => {
-  const { name } = req.body;
-  if (!name || typeof name !== "string" || !name.trim()) {
+  const body = req.body?.data ?? req.body;
+  const { name } = body;
+    if (!name || typeof name !== "string" || !name.trim()) {
     res.status(400).json({ error: "Name is required" });
     return;
   }

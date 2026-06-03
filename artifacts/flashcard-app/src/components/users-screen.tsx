@@ -21,6 +21,9 @@ interface UsersScreenProps {
 export function UsersScreen({ onSelectUser }: UsersScreenProps) {
   const qc = useQueryClient();
   const { data: users = [], isLoading } = useListUsers();
+
+  console.log("users =", users);
+  console.log("isArray =", Array.isArray(users));
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
@@ -31,19 +34,28 @@ export function UsersScreen({ onSelectUser }: UsersScreenProps) {
   const { toast } = useToast();
 
   const invalidate = () => qc.invalidateQueries({ queryKey: getListUsersQueryKey() });
-
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName.trim()) return;
+  
     createUser.mutate(
       { data: { name: newUserName.trim() } },
       {
-        onSuccess: () => { setNewUserName(""); invalidate(); },
-        onError: () => toast({ title: "Lỗi", description: "Tên người dùng đã tồn tại", variant: "destructive" }),
+        onSuccess: () => {
+          setNewUserName("");
+          invalidate();
+        },
+        onError: (err) => {
+          console.error("Create user error:", err);
+          toast({
+            title: "Lỗi",
+            description: "Không tạo được người dùng",
+            variant: "destructive",
+          });
+        },
       }
     );
   };
-
   const handleRename = () => {
     if (!editingUser || !editingUser.newName.trim()) return;
     updateUser.mutate(
@@ -97,8 +109,9 @@ export function UsersScreen({ onSelectUser }: UsersScreenProps) {
           </div>
         ) : (
           <ul className="divide-y divide-border">
-            {users.map((user) => (
-              <li
+{Array.isArray(users) &&
+  users.map((user) => (
+                  <li
                 key={user.id}
                 className="flex items-center justify-between px-5 py-4 hover:bg-muted/40 transition-colors group"
                 data-testid={`row-user-${user.id}`}

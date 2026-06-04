@@ -124,9 +124,19 @@ export function CreatePackScreen({ userId, onBack, onSaved }: CreatePackScreenPr
   return (
     <div className="w-full flex flex-col gap-5">
       <div className="flex items-center gap-3 pt-4">
-        <button onClick={onBack} className="text-muted-foreground hover:text-foreground transition-colors" data-testid="button-back-packs">
-          <ChevronLeft className="h-5 w-5" />
-        </button>
+       <button
+  onClick={() => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      onBack();
+    }
+  }}
+  className="text-muted-foreground hover:text-foreground transition-colors"
+  data-testid="button-back-packs"
+>
+  <ChevronLeft className="h-5 w-5" />
+</button>
         <h2 className="text-xl font-bold text-foreground">Tạo bộ từ vựng mới</h2>
       </div>
 

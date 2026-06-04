@@ -167,7 +167,54 @@ export function EditPackScreen({ userId, packId, packName: initialPackName, pack
       setDeletingId(null);
     }
   };
-
+  const exportCsv = () => {
+    const escapeCsv = (value: unknown) =>
+      `"${String(value ?? "").replaceAll('"', '""')}"`;
+  
+    const isChinesePack = packLanguage === "chinese";
+  
+    const rows = isChinesePack
+      ? [
+          ["STT", "Từ", "Pinyin", "Nghĩa"],
+          ...words.map((w, i) => [
+            i + 1,
+            w.term,
+            toPinyin(w.term),
+            w.meaning,
+          ]),
+        ]
+      : [
+          ["STT", "Từ", "Nghĩa"],
+          ...words.map((w, i) => [
+            i + 1,
+            w.term,
+            w.meaning,
+          ]),
+        ];
+  
+    const csv =
+      "\uFEFF" +
+      rows
+        .map((row) => row.map(escapeCsv).join(";"))
+        .join("\n");
+  
+    const blob = new Blob([csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+  
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+  
+    const safeName = name
+      .trim()
+      .replace(/[\\/:*?"<>|]/g, "-");
+  
+    a.href = url;
+    a.download = `${safeName || "flashcard"}.csv`;
+    a.click();
+  
+    URL.revokeObjectURL(url);
+  };
   const previewCount = bulkText.trim() ? parseBulkText(bulkText).length : 0;
 
   return (
@@ -287,9 +334,19 @@ export function EditPackScreen({ userId, packId, packName: initialPackName, pack
       </div>
 
       <div className="bg-card border border-border rounded-lg overflow-hidden">
-        <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase px-5 pt-4 pb-2">
-          Danh sách từ {isLoading ? "" : `(${words.length} từ)`}
-        </p>
+      <div className="flex items-center justify-between px-5 pt-4 pb-2">
+  <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+    Danh sách từ {isLoading ? "" : `(${words.length} từ)`}
+  </p>
+
+  <Button
+    size="sm"
+    variant="outline"
+    onClick={exportCsv}
+  >
+    Xuất CSV
+  </Button>
+</div>
         {isLoading ? (
           <p className="px-5 pb-4 text-sm text-muted-foreground">Đang tải...</p>
         ) : words.length === 0 ? (

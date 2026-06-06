@@ -60,6 +60,7 @@ export function StudyScreen({ packId, packName, packLanguage, selectedWords: pre
   const correctTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { toast } = useToast();
   const isChinese = packLanguage === "chinese";
+  const displayWord = mode === "word_to_meaning" ? currentWord?.term : currentWord?.meaning;
 
   useEffect(() => {
     if (!feedback && currentWord && inputRef.current) {
@@ -79,6 +80,36 @@ export function StudyScreen({ packId, packName, packLanguage, selectedWords: pre
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
+useEffect(() => {
+  const handleAltSpeak = (e: KeyboardEvent) => {
+    if (e.key !== "Alt") return;
+    if (!displayWord) return;
+
+    e.preventDefault();
+    speak(String(displayWord));
+  };
+
+  window.addEventListener("keydown", handleAltSpeak);
+
+  return () => {
+    window.removeEventListener("keydown", handleAltSpeak);
+  };
+}, [displayWord, packLanguage]);
+useEffect(() => {
+  const handleAltSpeak = (e: KeyboardEvent) => {
+    if (e.key !== "Alt") return;
+    if (!displayWord) return;
+
+    e.preventDefault();
+    speak(String(displayWord));
+  };
+
+  window.addEventListener("keydown", handleAltSpeak);
+
+  return () => {
+    window.removeEventListener("keydown", handleAltSpeak);
+  };
+}, [displayWord, packLanguage]);
 
   const handleStart = (selectedMode: StudyMode) => {
     if (allWords.length === 0) {
@@ -203,7 +234,6 @@ export function StudyScreen({ packId, packName, packLanguage, selectedWords: pre
     );
   }
 
-  const displayWord = mode === "word_to_meaning" ? currentWord?.term : currentWord?.meaning;
   const modeLabel = mode === "word_to_meaning"
     ? (isChinese ? "Chữ → Chữ Hán" : "Từ → Nghĩa")
     : (isChinese ? "Nghĩa → Chữ Hán" : "Nghĩa → Từ");
@@ -248,13 +278,14 @@ export function StudyScreen({ packId, packName, packLanguage, selectedWords: pre
         {displayWord}
       </span>
     )}
-
     <button
-      onClick={() => speak(String(displayWord))}
-      className="absolute -right-8 top-0 text-muted-foreground hover:text-foreground"
-    >
-      <Volume2 className="h-4 w-4" />
-    </button>
+     type="button"
+     onClick={() => speak(String(displayWord))}
+     className="absolute -right-8 top-0 text-muted-foreground hover:text-foreground"
+     title="Phát âm (Alt)"
+     >
+  <Volume2 className="h-4 w-4" />
+</button>
 
   </div>
 </div>

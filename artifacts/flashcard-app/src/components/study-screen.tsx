@@ -9,6 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, ArrowRight } from "lucide-react";
+import {Volume2} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { StudyMode } from "@/lib/types";
 import { toPinyin } from "@/lib/pinyin";
@@ -39,6 +40,20 @@ export function StudyScreen({ packId, packName, packLanguage, selectedWords: pre
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [score, setScore] = useState(0);
+  const speak = (text: string) => {
+    if (!("speechSynthesis" in window)) {
+      alert("Trình duyệt không hỗ trợ phát âm.");
+      return;
+    }
+  
+    window.speechSynthesis.cancel();
+  
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = packLanguage === "chinese" ? "zh-CN" : "en-US";
+    utterance.rate = 0.85;
+  
+    window.speechSynthesis.speak(utterance);
+  };
 
   const inputRef = useRef<HTMLInputElement>(null);
   const advanceRef = useRef<(() => void) | null>(null);
@@ -222,15 +237,27 @@ export function StudyScreen({ packId, packName, packLanguage, selectedWords: pre
         }`}>
           {/* Question display — no pinyin here */}
           <div className="min-h-[100px] flex items-center justify-center text-center">
-            {mode === "word_to_meaning" && isChinese ? (
-              <span className="font-serif text-7xl font-bold text-foreground leading-none">
-                {displayWord}
-              </span>
-            ) : (
-              <span className="text-4xl font-bold text-foreground">{displayWord}</span>
-            )}
-          </div>
+  <div className="relative inline-block">
 
+    {mode === "word_to_meaning" && isChinese ? (
+      <span className="font-serif text-7xl font-bold text-foreground leading-none">
+        {displayWord}
+      </span>
+    ) : (
+      <span className="text-4xl font-bold text-foreground">
+        {displayWord}
+      </span>
+    )}
+
+    <button
+      onClick={() => speak(String(displayWord))}
+      className="absolute -right-8 top-0 text-muted-foreground hover:text-foreground"
+    >
+      <Volume2 className="h-4 w-4" />
+    </button>
+
+  </div>
+</div>
           {/* Review card shown after checking — always for Chinese */}
           {feedback && isChinese && currentWord && (
             <div className={`rounded-md px-4 py-3 flex flex-col items-center gap-1 text-center ${

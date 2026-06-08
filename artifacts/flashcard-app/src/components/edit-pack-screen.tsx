@@ -68,6 +68,7 @@ export function EditPackScreen({ userId, packId, packName: initialPackName, pack
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editTerm, setEditTerm] = useState("");
   const [editMeaning, setEditMeaning] = useState("");
+  const [editPinyin, setEditPinyin] = useState("");
   const { toast } = useToast();
 
   const isChinese = packLanguage === "chinese";
@@ -88,18 +89,32 @@ export function EditPackScreen({ userId, packId, packName: initialPackName, pack
 
   const handleAddWord = () => {
     if (!termInput.trim() || !meaningInput.trim()) return;
+  
     createWord.mutate(
-      { packId, data: { term: termInput.trim(), meaning: meaningInput.trim() } },
+      {
+        packId,
+        data: {
+          term: termInput.trim(),
+          meaning: meaningInput.trim(),
+        },
+      },
       {
         onSuccess: () => {
-          setTermInput(""); setMeaningInput("");
-          invalidateWords(); invalidatePacks();
+          setTermInput("");
+          setMeaningInput("");
+  
+          invalidateWords();
+          invalidatePacks();
         },
-        onError: () => toast({ title: "Lỗi", description: "Không thể thêm từ", variant: "destructive" }),
+        onError: () =>
+          toast({
+            title: "Lỗi",
+            description: "Không thể thêm từ",
+            variant: "destructive",
+          }),
       }
     );
   };
-
   const handleBulkImport = async () => {
     const parsed = parseBulkText(bulkText);
     if (parsed.length === 0) {
@@ -132,26 +147,41 @@ export function EditPackScreen({ userId, packId, packName: initialPackName, pack
   const handleStartEdit = (word: VocabWord) => {
     setEditingId(word.id);
     setEditTerm(word.term);
+    setEditPinyin(word.pinyin ?? toPinyin(word.term));
     setEditMeaning(word.meaning);
   };
 
   const handleCancelEdit = () => {
     setEditingId(null);
     setEditTerm("");
+    setEditPinyin("");
     setEditMeaning("");
   };
 
   const handleSaveEdit = (wordId: number) => {
     if (!editTerm.trim() || !editMeaning.trim()) return;
+  
     updateWord.mutate(
-      { wordId, data: { term: editTerm.trim(), meaning: editMeaning.trim() } },
+      {
+        wordId,
+        data: {
+          term: editTerm.trim(),
+          pinyin: isChinese ? editPinyin.trim() : undefined,
+          meaning: editMeaning.trim(),
+        },
+      },
       {
         onSuccess: () => {
           invalidateWords();
           handleCancelEdit();
           toast({ title: "Đã lưu" });
         },
-        onError: () => toast({ title: "Lỗi", description: "Không thể lưu từ", variant: "destructive" }),
+        onError: () =>
+          toast({
+            title: "Lỗi",
+            description: "Không thể lưu từ",
+            variant: "destructive",
+          }),
       }
     );
   };
@@ -179,8 +209,8 @@ export function EditPackScreen({ userId, packId, packName: initialPackName, pack
           ...words.map((w, i) => [
             i + 1,
             w.term,
-            toPinyin(w.term),
-            w.meaning,
+            w.pinyin || toPinyin(w.term),
+                        w.meaning,
           ]),
         ]
       : [
@@ -265,6 +295,8 @@ export function EditPackScreen({ userId, packId, packName: initialPackName, pack
             data-testid="input-word-term"
             onKeyDown={(e) => e.key === "Enter" && handleAddWord()}
           />
+      
+  
           <Input
             value={meaningInput}
             onChange={(e) => setMeaningInput(e.target.value)}
@@ -335,15 +367,15 @@ export function EditPackScreen({ userId, packId, packName: initialPackName, pack
 
       <div className="bg-card border border-border rounded-lg overflow-hidden">
       <div className="flex items-center justify-between px-5 pt-4 pb-2">
-  <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-    Danh sách từ {isLoading ? "" : `(${words.length} từ)`}
-  </p>
+    <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+      Danh sách từ {isLoading ? "" : `(${words.length} từ)`}
+    </p>
 
-  <Button
-    size="sm"
-    variant="outline"
-    onClick={exportCsv}
-  >
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={exportCsv}
+    >
     Xuất CSV
   </Button>
 </div>
@@ -366,6 +398,18 @@ export function EditPackScreen({ userId, packId, packName: initialPackName, pack
                         autoFocus
                         onKeyDown={(e) => { if (e.key === "Enter") handleSaveEdit(w.id); if (e.key === "Escape") handleCancelEdit(); }}
                       />
+                      {isChinese && (
+  <Input
+    value={editPinyin}
+    onChange={(e) => setEditPinyin(e.target.value)}
+    placeholder="Pinyin..."
+    className="flex-1 h-9 text-sm"
+    onKeyDown={(e) => {
+      if (e.key === "Enter") handleSaveEdit(w.id);
+      if (e.key === "Escape") handleCancelEdit();
+    }}
+  />
+)}
                       <Input
                         value={editMeaning}
                         onChange={(e) => setEditMeaning(e.target.value)}
@@ -395,7 +439,11 @@ export function EditPackScreen({ userId, packId, packName: initialPackName, pack
                     <span className="text-muted-foreground text-xs w-5 shrink-0">{i + 1}</span>
                     <div className="flex-1 flex flex-col min-w-0">
                       <span className={`font-semibold truncate ${isChinese ? "font-serif text-base" : ""}`}>{w.term}</span>
-                      {isChinese && <span className="text-xs text-muted-foreground tracking-wide">{toPinyin(w.term)}</span>}
+                      {isChinese && (
+  <span className="text-xs text-muted-foreground tracking-wide">
+    {w.pinyin || toPinyin(w.term)}
+  </span>
+)}
                     </div>
                     <span className="text-muted-foreground flex-1 truncate">{w.meaning}</span>
                     <div className="flex items-center gap-1 shrink-0">

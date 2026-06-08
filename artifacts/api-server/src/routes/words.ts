@@ -16,37 +16,44 @@ router.get("/packs/:packId/words", async (req, res) => {
 
 router.post("/packs/:packId/words", async (req, res) => {
   const packId = parseInt(req.params.packId, 10);
-  const { term, meaning } = req.body;
-  if (!term || !meaning) {
+  const { term, pinyin, meaning } = req.body;
+    if (!term || !meaning) {
     res.status(400).json({ error: "term and meaning are required" });
     return;
   }
   const [created] = await db
     .insert(wordsTable)
-    .values({ packId, term: term.trim(), meaning: meaning.trim() })
-    .returning();
+    .values({
+      packId,
+      term: term.trim(),
+      pinyin: pinyin?.trim() || null,
+      meaning: meaning.trim(),
+    })
+        .returning();
   res.status(201).json(created);
 });
 
 router.patch("/words/:wordId", async (req, res) => {
   const wordId = parseInt(req.params.wordId, 10);
-  const { term, meaning } = req.body;
-  const updates: Record<string, string> = {};
-  if (term) updates.term = term.trim();
-  if (meaning) updates.meaning = meaning.trim();
-  if (!Object.keys(updates).length) {
-    res.status(400).json({ error: "Nothing to update" });
-    return;
-  }
+  const { term, pinyin, meaning } = req.body;
+
+  const updateData: Record<string, unknown> = {};
+
+  if (term !== undefined) updateData.term = term.trim();
+  if (pinyin !== undefined) updateData.pinyin = pinyin.trim() || null;
+  if (meaning !== undefined) updateData.meaning = meaning.trim();
+
   const [updated] = await db
     .update(wordsTable)
-    .set(updates)
+    .set(updateData)
     .where(eq(wordsTable.id, wordId))
     .returning();
+
   if (!updated) {
     res.status(404).json({ error: "Word not found" });
     return;
   }
+
   res.json(updated);
 });
 

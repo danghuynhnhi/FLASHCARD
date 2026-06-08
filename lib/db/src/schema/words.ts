@@ -7,7 +7,8 @@ export const wordsTable = pgTable("words", {
   id: serial("id").primaryKey(),
   packId: integer("pack_id").notNull().references(() => packsTable.id, { onDelete: "cascade" }),
   term: text("term").notNull(),
-  meaning: text("meaning").notNull(),
+  pinyin: text("pinyin"),
+    meaning: text("meaning").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

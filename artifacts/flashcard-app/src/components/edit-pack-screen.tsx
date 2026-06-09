@@ -171,7 +171,13 @@ export function EditPackScreen({ userId, packId, packName: initialPackName, pack
         },
       },
       {
-        onSuccess: () => {
+        onSuccess: (updatedWord) => {
+          qc.setQueryData(getListWordsQueryKey(packId), (old: VocabWord[] = []) =>
+            old.map((word) =>
+              word.id === updatedWord.id ? { ...word, ...updatedWord } : word
+            )
+          );
+        
           invalidateWords();
           handleCancelEdit();
           toast({ title: "Đã lưu" });

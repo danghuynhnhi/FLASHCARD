@@ -103,9 +103,11 @@ export function WordSelectScreen({ packId, packName, packLanguage, onBack, onSta
                     <span className={`font-semibold text-sm ${isChinese ? "font-serif text-base" : ""} ${checked ? "text-foreground" : "text-muted-foreground"}`}>
                       {w.term}
                     </span>
-                    {isChinese && (
-                      <p className="text-xs text-muted-foreground tracking-wide">{toPinyin(w.term)}</p>
-                    )}
+                    {isChinese && ( 
+                       <p className="text-xs text-muted-foreground tracking-wide">
+                         {(w as any).pinyin || toPinyin(w.term)}
+                          </p>
+                        )}
                   </div>
                   <span className={`text-sm truncate max-w-[45%] ${checked ? "text-muted-foreground" : "text-muted-foreground/40"}`}>
                     {w.meaning}

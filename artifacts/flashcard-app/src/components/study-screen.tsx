@@ -152,7 +152,7 @@ export function StudyScreen({
 
     setFeedback(correct ? "correct" : "wrong");
     // Enter xong luôn phát âm từ hiện tại
-speakWord(currentWord);
+    speakWord(currentWord);
     setAnswered((a) => a + 1);
 
     if (correct) {
@@ -188,7 +188,7 @@ speakWord(currentWord);
       };
 
       advanceRef.current = advance;
-      correctTimerRef.current = setTimeout(advance, 800);
+      correctTimerRef.current = setTimeout(advance, 2000);
     } else {
       if (!wrongWords.find((w) => w.id === currentWord.id)) {
         setWrongWords((prev) => [...prev, currentWord]);

@@ -144,12 +144,15 @@ export function StudyScreen({
 
   const checkAnswer = () => {
     if (!currentWord || !answer.trim() || feedback) return;
+    
 
     const correct =
       answer.trim().toLowerCase() ===
       getCorrectAnswer(currentWord).toLowerCase();
 
     setFeedback(correct ? "correct" : "wrong");
+    // Enter xong luôn phát âm từ hiện tại
+speakWord(currentWord);
     setAnswered((a) => a + 1);
 
     if (correct) {

@@ -7,6 +7,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +15,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ChevronLeft, Plus, Pencil, Trash2, GripVertical } from "lucide-react";
+import {
+  ChevronLeft,
+  Plus,
+  Pencil,
+  Trash2,
+  GripVertical,
+} from "lucide-react";
 
 import {
   DndContext,
@@ -45,22 +52,30 @@ type PackWithSort = PackWithCount & {
   sortOrder?: number;
 };
 
-async function reorderPacks(userId: number, language: string, packIds: number[]) {
+type DuplicateGroup = {
+  term: string;
+  words: Array<{
+    id: number;
+    packId: number;
+    term: string;
+    pinyin?: string | null;
+    meaning: string;
+    packName?: string | null;
+  }>;
+};
+
+async function reorderPacks(
+  userId: number,
+  language: string,
+  packIds: number[]
+) {
   const res = await fetch(`/api/users/${userId}/packs/reorder`, {
     method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      language,
-      packIds,
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ language, packIds }),
   });
 
-  if (!res.ok) {
-    throw new Error("Cannot reorder packs");
-  }
-
+  if (!res.ok) throw new Error("Cannot reorder packs");
   return res.json();
 }
 
@@ -69,11 +84,17 @@ function SortablePackCard({
   onEditPack,
   onStudy,
   onDelete,
+  mergeMode,
+  selected,
+  onToggleSelect,
 }: {
   pack: PackWithSort;
   onEditPack: (packId: number, packName: string, packLanguage: string) => void;
   onStudy: (packId: number, packName: string, packLanguage: string) => void;
   onDelete: (pack: PackWithSort) => void;
+  mergeMode: boolean;
+  selected: boolean;
+  onToggleSelect: (packId: number) => void;
 }) {
   const {
     attributes,
@@ -84,10 +105,13 @@ function SortablePackCard({
     isDragging,
   } = useSortable({
     id: pack.id,
+    disabled: mergeMode,
   });
 
   const pct =
-    pack.wordCount > 0 ? Math.round((pack.learned / pack.wordCount) * 100) : 0;
+    pack.wordCount > 0
+      ? Math.round((pack.learned / pack.wordCount) * 100)
+      : 0;
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -98,22 +122,36 @@ function SortablePackCard({
     <div
       ref={setNodeRef}
       style={style}
-      className={`bg-card border border-border rounded-lg p-4 group hover:shadow-sm transition-all ${
-        isDragging ? "opacity-60 shadow-md z-10" : ""
-      }`}
+      className={`bg-card border rounded-lg p-4 group hover:shadow-sm transition-all ${
+        selected ? "border-primary ring-1 ring-primary/30" : "border-border"
+      } ${isDragging ? "opacity-60 shadow-md z-10" : ""}`}
       data-testid={`card-pack-${pack.id}`}
     >
+      {mergeMode && (
+        <label className="mb-3 flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => onToggleSelect(pack.id)}
+            className="h-4 w-4"
+          />
+          Chọn để gộp
+        </label>
+      )}
+
       <div className="flex items-start justify-between mb-1">
         <div className="flex items-start gap-2 min-w-0">
-          <button
-            type="button"
-            className="mt-0.5 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing"
-            {...attributes}
-            {...listeners}
-            title="Kéo để sắp xếp"
-          >
-            <GripVertical className="h-4 w-4" />
-          </button>
+          {!mergeMode && (
+            <button
+              type="button"
+              className="mt-0.5 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing"
+              {...attributes}
+              {...listeners}
+              title="Kéo để sắp xếp"
+            >
+              <GripVertical className="h-4 w-4" />
+            </button>
+          )}
 
           <div className="min-w-0">
             <p className="font-semibold text-foreground truncate">
@@ -125,27 +163,27 @@ function SortablePackCard({
           </div>
         </div>
 
-        <div className="flex opacity-0 group-hover:opacity-100 transition-opacity gap-1 -mt-1 -mr-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-muted-foreground"
-            onClick={() => onEditPack(pack.id, pack.name, pack.language)}
-            data-testid={`button-edit-pack-${pack.id}`}
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
+        {!mergeMode && (
+          <div className="flex opacity-0 group-hover:opacity-100 transition-opacity gap-1 -mt-1 -mr-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground"
+              onClick={() => onEditPack(pack.id, pack.name, pack.language)}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-destructive hover:text-destructive"
-            onClick={() => onDelete(pack)}
-            data-testid={`button-delete-pack-${pack.id}`}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-destructive hover:text-destructive"
+              onClick={() => onDelete(pack)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="my-3">
@@ -165,7 +203,7 @@ function SortablePackCard({
       <Button
         className="w-full h-9 text-sm"
         onClick={() => onStudy(pack.id, pack.name, pack.language)}
-        data-testid={`button-study-pack-${pack.id}`}
+        disabled={mergeMode}
       >
         Học ngay
       </Button>
@@ -185,6 +223,22 @@ export function PacksScreen({
   const { data: packs = [], isLoading } = useListPacks(userId);
   const deletePack = useDeletePack();
 
+  const [mergeMode, setMergeMode] = useState(false);
+  const [selectedPacks, setSelectedPacks] = useState<number[]>([]);
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
+  const [mergeName, setMergeName] = useState("");
+  const [duplicateWords, setDuplicateWords] = useState<DuplicateGroup[]>([]);
+  const [removeWordIds, setRemoveWordIds] = useState<number[]>([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [merging, setMerging] = useState(false);
+  const [step, setStep] = useState<"name" | "duplicates">("name");
+
+  const [resultDialogOpen, setResultDialogOpen] = useState(false);
+  const [mergeResult, setMergeResult] = useState<{
+    added: number;
+    removed: number;
+  } | null>(null);
+
   const [deletingPack, setDeletingPack] = useState<{
     id: number;
     name: string;
@@ -192,9 +246,7 @@ export function PacksScreen({
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
+      activationConstraint: { distance: 8 },
     })
   );
 
@@ -220,6 +272,130 @@ export function PacksScreen({
   const chinesePacks = sortedPacks.filter((p) => p.language === "chinese");
   const englishPacks = sortedPacks.filter((p) => p.language === "english");
   const hasBoth = chinesePacks.length > 0 && englishPacks.length > 0;
+
+  const selectedPackObjects = sortedPacks.filter((p) =>
+    selectedPacks.includes(p.id)
+  );
+
+  const selectedLanguages = new Set(
+    selectedPackObjects.map((p) => p.language)
+  );
+
+  const canMerge = selectedPacks.length >= 2 && selectedLanguages.size === 1;
+
+  const toggleSelectPack = (packId: number) => {
+    setSelectedPacks((prev) =>
+      prev.includes(packId)
+        ? prev.filter((id) => id !== packId)
+        : [...prev, packId]
+    );
+  };
+
+  const resetMerge = () => {
+    setMergeDialogOpen(false);
+    setMergeName("");
+    setDuplicateWords([]);
+    setRemoveWordIds([]);
+    setStep("name");
+  };
+
+  const openMergeDialog = () => {
+    if (!canMerge) return;
+
+    const names = selectedPackObjects.map((p) => p.name).join(" + ");
+    setMergeName(names.length > 45 ? "Bộ từ đã gộp" : names);
+    setStep("name");
+    setDuplicateWords([]);
+    setRemoveWordIds([]);
+    setMergeDialogOpen(true);
+  };
+
+  const handleMergePreview = async () => {
+    if (!canMerge || !mergeName.trim()) return;
+
+    const firstPack = selectedPackObjects[0];
+
+    try {
+      setPreviewLoading(true);
+
+      const previewRes = await fetch(
+        `/api/users/${userId}/packs/merge/preview`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            packIds: selectedPacks,
+            language: firstPack.language,
+          }),
+        }
+      );
+
+      if (!previewRes.ok) {
+        throw new Error(await previewRes.text());
+      }
+
+      const preview = await previewRes.json();
+
+      setDuplicateWords(preview.duplicates ?? []);
+      setRemoveWordIds([]);
+      setStep("duplicates");
+    } catch (err) {
+      console.error(err);
+      alert("Không xem được danh sách từ trùng");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const confirmMerge = async () => {
+    const firstPack = selectedPackObjects[0];
+    if (!firstPack) return;
+
+    try {
+      setMerging(true);
+
+      const res = await fetch(`/api/users/${userId}/packs/merge/confirm`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          packIds: selectedPacks,
+          name: mergeName.trim(),
+          language: firstPack.language,
+          removeWordIds,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+
+      const result = await res.json();
+
+      setMergeResult({
+        added: result.addedCount,
+        removed: result.removedCount,
+      });
+
+      setResultDialogOpen(true);
+      setMergeDialogOpen(false);
+      setMergeMode(false);
+      setSelectedPacks([]);
+      setDuplicateWords([]);
+      setRemoveWordIds([]);
+      setStep("name");
+
+      invalidate();
+    } catch (err) {
+      console.error(err);
+      alert("Gộp thất bại");
+    } finally {
+      setMerging(false);
+    }
+  };
 
   const handleDelete = () => {
     if (!deletingPack) return;
@@ -252,15 +428,18 @@ export function PacksScreen({
     const newPacks = arrayMove(sectionPacks, oldIndex, newIndex);
     const packIds = newPacks.map((p) => p.id);
 
-    qc.setQueryData(getListPacksQueryKey(userId), (old: PackWithSort[] = []) => {
-      const other = old.filter((p) => p.language !== language);
-      const reordered = newPacks.map((p, i) => ({
-        ...p,
-        sortOrder: i + 1,
-      }));
+    qc.setQueryData(
+      getListPacksQueryKey(userId),
+      (old: PackWithSort[] = []) => {
+        const other = old.filter((p) => p.language !== language);
+        const reordered = newPacks.map((p, i) => ({
+          ...p,
+          sortOrder: i + 1,
+        }));
 
-      return [...other, ...reordered];
-    });
+        return [...other, ...reordered];
+      }
+    );
 
     try {
       await reorderPacks(userId, language, packIds);
@@ -301,6 +480,9 @@ export function PacksScreen({
               <SortablePackCard
                 key={pack.id}
                 pack={pack}
+                mergeMode={mergeMode}
+                selected={selectedPacks.includes(pack.id)}
+                onToggleSelect={toggleSelectPack}
                 onEditPack={onEditPack}
                 onStudy={onStudy}
                 onDelete={(p) =>
@@ -331,18 +513,60 @@ export function PacksScreen({
 
           <div>
             <h2 className="text-xl font-bold text-foreground">{userName}</h2>
-            <p className="text-xs text-muted-foreground">Bộ từ vựng của bạn</p>
+            <p className="text-xs text-muted-foreground">
+              Bộ từ vựng của bạn
+            </p>
           </div>
         </div>
 
-        <Button
-          onClick={onCreatePack}
-          className="h-9 px-4 gap-1.5 text-sm"
-          data-testid="button-create-pack"
-        >
-          <Plus className="h-4 w-4" /> Tạo bộ mới
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setMergeMode((v) => !v);
+              setSelectedPacks([]);
+              resetMerge();
+            }}
+            className="h-9 px-4 text-sm"
+          >
+            {mergeMode ? "Hủy gộp" : "Gộp bộ từ"}
+          </Button>
+
+          <Button
+            onClick={onCreatePack}
+            className="h-9 px-4 gap-1.5 text-sm"
+            data-testid="button-create-pack"
+            disabled={mergeMode}
+          >
+            <Plus className="h-4 w-4" /> Tạo bộ mới
+          </Button>
+        </div>
       </div>
+
+      {mergeMode && (
+        <div className="bg-muted/40 border border-border rounded-lg p-4 flex flex-col gap-3">
+          <p className="text-sm text-foreground">
+            Đã chọn{" "}
+            <span className="font-semibold">{selectedPacks.length}</span>{" "}
+            bộ từ.
+          </p>
+
+          {selectedLanguages.size > 1 && (
+            <p className="text-sm text-destructive">
+              Chỉ gộp được các bộ cùng ngôn ngữ. Hãy chọn toàn bộ tiếng Trung
+              hoặc toàn bộ tiếng Anh.
+            </p>
+          )}
+
+          <Button
+            className="w-full"
+            onClick={openMergeDialog}
+            disabled={!canMerge}
+          >
+            Gộp {selectedPacks.length} bộ đã chọn
+          </Button>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="py-12 text-center text-muted-foreground text-sm">
@@ -371,6 +595,154 @@ export function PacksScreen({
           )}
         </div>
       )}
+
+      <Dialog open={mergeDialogOpen} onOpenChange={setMergeDialogOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Gộp bộ từ</DialogTitle>
+          </DialogHeader>
+
+          {step === "name" && (
+            <div className="space-y-4 py-2">
+              <div className="rounded-lg border bg-muted/30 p-3">
+                <p className="text-sm">
+                  Đã chọn {selectedPacks.length} bộ từ.
+                </p>
+              </div>
+
+              <Input
+                value={mergeName}
+                onChange={(e) => setMergeName(e.target.value)}
+                placeholder="Tên bộ mới..."
+                autoFocus
+              />
+            </div>
+          )}
+
+          {step === "duplicates" && (
+            <div className="space-y-3 max-h-[430px] overflow-y-auto pr-1">
+              <p className="text-sm text-muted-foreground">
+                Chọn các từ muốn bỏ khỏi bộ mới.
+              </p>
+
+              {duplicateWords.length === 0 && (
+                <div className="rounded-lg border p-4 text-center">
+                  Không có từ trùng 🎉
+                </div>
+              )}
+
+              {duplicateWords.map((group, index) => (
+                <div key={index} className="border rounded-lg p-3">
+                  <div className="font-semibold mb-2">{group.term}</div>
+
+                  <div className="space-y-2">
+                    {group.words.map((word) => (
+                      <label
+                        key={word.id}
+                        className="flex items-start gap-2 rounded-md border p-2 cursor-pointer hover:bg-muted/40"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={removeWordIds.includes(word.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setRemoveWordIds((prev) => [...prev, word.id]);
+                            } else {
+                              setRemoveWordIds((prev) =>
+                                prev.filter((id) => id !== word.id)
+                              );
+                            }
+                          }}
+                          className="mt-1"
+                        />
+
+                        <span className="text-sm">
+                          <span className="font-medium">{word.term}</span>
+                          {word.pinyin && (
+                            <span className="text-muted-foreground">
+                              {" "}
+                              · {word.pinyin}
+                            </span>
+                          )}
+                          <br />
+                          <span className="text-muted-foreground">
+                            {word.meaning} ({word.packName})
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={resetMerge}
+              disabled={merging || previewLoading}
+            >
+              Hủy
+            </Button>
+
+            {step === "name" ? (
+              <Button
+                onClick={handleMergePreview}
+                disabled={!mergeName.trim() || previewLoading}
+              >
+                {previewLoading ? "Đang kiểm tra từ trùng..." : "Tiếp tục"}
+              </Button>
+            ) : (
+              <Button onClick={confirmMerge} disabled={merging}>
+                {merging ? "Đang gộp..." : "Xác nhận gộp"}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={resultDialogOpen} onOpenChange={setResultDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>✅ Gộp bộ từ thành công</DialogTitle>
+          </DialogHeader>
+
+          {mergeResult && (
+            <div className="space-y-4 py-2">
+              <div className="rounded-lg border bg-green-50 p-3">
+                <p className="font-medium text-green-700">
+                  Đã tạo bộ từ mới thành công
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border p-4 text-center">
+                  <div className="text-2xl font-bold">
+                    {mergeResult.added}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Từ giữ lại
+                  </div>
+                </div>
+
+                <div className="rounded-lg border p-4 text-center">
+                  <div className="text-2xl font-bold text-red-500">
+                    {mergeResult.removed}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Từ loại bỏ
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button onClick={() => setResultDialogOpen(false)}>Xong</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={!!deletingPack}

@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
 import type {
   MutationFunction,
   QueryFunction,
@@ -1122,3 +1124,45 @@ export const useDeleteWord = <
 > => {
   return useMutation(getDeleteWordMutationOptions(options));
 };
+export async function mergePacks(
+  userId: number,
+  data: {
+    packIds: number[];
+    name: string;
+    language: string;
+  }
+) {
+  const res = await fetch(
+    `${API_BASE_URL}/users/${userId}/packs/merge`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error("Merge failed");
+  }
+
+  return res.json();
+}
+export function useMergePacks(userId: number) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      packIds: number[];
+      name: string;
+      language: string;
+    }) => mergePacks(userId, data),
+
+    onSuccess: () => {
+      qc.invalidateQueries({
+        queryKey: getListPacksQueryKey(userId),
+      });
+    },
+  });
+}

@@ -7,8 +7,30 @@ export type ViewState =
   | { view: "packs"; userId: number; userName: string }
   | { view: "create-pack"; userId: number; userName: string }
   | { view: "edit-pack"; userId: number; userName: string; packId: number; packName: string; packLanguage: string }
-  | { view: "word-select"; userId: number; userName: string; packId: number; packName: string; packLanguage: string }
-  | { view: "study"; userId: number; userName: string; packId: number; packName: string; packLanguage: string; selectedWords?: VocabWord[] }
+  | | {
+    view: "word-select";
+    userId: number;
+    userName: string;
+    packId: number;
+    packName: string;
+    packLanguage: string;
+  }
+| {
+    view: "starred-words";
+    userId: number;
+    userName: string;
+    language: string;
+    title: string;
+  }
+| {
+    view: "study";
+    userId: number;
+    userName: string;
+    packId: number;
+    packName: string;
+    packLanguage: string;
+    selectedWords?: VocabWord[];
+  }
   | {
       view: "results";
       userId: number;

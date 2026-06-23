@@ -16,12 +16,10 @@ export interface UserWithCount {
 }
 
 export interface UserInput {
-  /** @minLength 1 */
   name: string;
 }
 
 export interface UserUpdate {
-  /** @minLength 1 */
   name: string;
 }
 
@@ -32,6 +30,7 @@ export interface PackWithCount {
   language: string;
   learned: number;
   wordCount: number;
+  sortOrder?: number;
 }
 
 export type PackInputLanguage =
@@ -43,13 +42,11 @@ export const PackInputLanguage = {
 } as const;
 
 export interface PackInput {
-  /** @minLength 1 */
   name: string;
   language: PackInputLanguage;
 }
 
 export interface PackUpdate {
-  /** @minLength 1 */
   name?: string;
   learned?: number;
 }
@@ -58,19 +55,22 @@ export interface VocabWord {
   id: number;
   packId: number;
   term: string;
+  pinyin?: string | null;
   meaning: string;
+  starred?: boolean;
+  createdAt?: string;
+  packName?: string | null;
 }
 
 export interface WordInput {
-  /** @minLength 1 */
   term: string;
-  /** @minLength 1 */
+  pinyin?: string | null;
   meaning: string;
 }
 
 export interface WordUpdate {
-  /** @minLength 1 */
   term?: string;
-  /** @minLength 1 */
+  pinyin?: string | null;
   meaning?: string;
+  starred?: boolean;
 }

@@ -7,6 +7,7 @@ import { EditPackScreen } from "@/components/edit-pack-screen";
 import { WordSelectScreen } from "@/components/word-select-screen";
 import { StudyScreen } from "@/components/study-screen";
 import { ResultsScreen } from "@/components/results-screen";
+import { StarredWordsScreen } from "@/components/starred-words-screen";
 
 function App() {
   const [viewState, setViewState] = useState<ViewState>({ view: "users" });
@@ -29,19 +30,11 @@ function App() {
 
     const handlePopState = (event: PopStateEvent) => {
       const state = event.state as ViewState | null;
-
-      if (state && state.view) {
-        setViewState(state);
-      } else {
-        setViewState({ view: "users" });
-      }
+      setViewState(state && state.view ? state : { view: "users" });
     };
 
     window.addEventListener("popstate", handlePopState);
-
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-    };
+    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
   return (
@@ -77,16 +70,30 @@ function App() {
                 packLanguage,
               })
             }
-            onStudy={(packId, packName, packLanguage) =>
+            onStudy={(packId, packName, packLanguage) => {
+              const isStarredPack = packId === -100 || packId === -101;
+              const isEditStarred = packId === -200 || packId === -201;
+
+              if (isEditStarred) {
+                navigate({
+                  view: "starred-words",
+                  userId: viewState.userId,
+                  userName: viewState.userName,
+                  language: packLanguage,
+                  title: packName,
+                });
+                return;
+              }
+
               navigate({
-                view: "word-select",
+                view: isStarredPack ? "study" : "word-select",
                 userId: viewState.userId,
                 userName: viewState.userName,
                 packId,
                 packName,
                 packLanguage,
-              })
-            }
+              });
+            }}
           />
         )}
 
@@ -135,8 +142,29 @@ function App() {
           />
         )}
 
+        {viewState.view === "starred-words" && (
+          <StarredWordsScreen
+            userId={viewState.userId}
+            language={viewState.language}
+            title={viewState.title}
+            onBack={goBack}
+            onStudy={(words) =>
+              navigate({
+                view: "study",
+                userId: viewState.userId,
+                userName: viewState.userName,
+                packId: viewState.language === "chinese" ? -100 : -101,
+                packName: viewState.title,
+                packLanguage: viewState.language,
+                selectedWords: words,
+              })
+            }
+          />
+        )}
+
         {viewState.view === "study" && (
           <StudyScreen
+            userId={viewState.userId}
             packId={viewState.packId}
             packName={viewState.packName}
             packLanguage={viewState.packLanguage}

@@ -271,7 +271,6 @@ export function PacksScreen({
 
   const chinesePacks = sortedPacks.filter((p) => p.language === "chinese");
   const englishPacks = sortedPacks.filter((p) => p.language === "english");
-  const hasBoth = chinesePacks.length > 0 && englishPacks.length > 0;
 
   const selectedPackObjects = sortedPacks.filter((p) =>
     selectedPacks.includes(p.id)
@@ -454,17 +453,47 @@ export function PacksScreen({
     label,
     language,
     sectionPacks,
+    starredPackId,
+    starredPackName,
   }: {
     label: string;
     language: "chinese" | "english";
     sectionPacks: PackWithSort[];
+    starredPackId: number;
+    starredPackName: string;
   }) => (
     <div>
-      {hasBoth && (
-        <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase mb-3">
-          {label}
-        </p>
-      )}
+     <div className="flex items-center justify-between mb-3">
+  <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+    {label}
+  </p>
+
+  <div className="inline-flex items-center overflow-hidden rounded-md border border-input bg-background">
+    <button
+      type="button"
+      onClick={() => onStudy(starredPackId, starredPackName, language)}
+      disabled={mergeMode}
+      className="h-8 px-3 text-xs font-medium hover:bg-muted disabled:opacity-50"
+    >
+      ⭐ Dấu sao
+    </button>
+
+    <button
+      type="button"
+      onClick={() =>
+        onStudy(
+          starredPackId === -100 ? -200 : -201,
+          starredPackName,
+          language
+        )
+      }
+      disabled={mergeMode}
+      className="h-8 border-l border-input px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+    >
+      Sửa
+    </button>
+  </div>
+</div>
 
       <DndContext
         sensors={sensors}
@@ -583,6 +612,8 @@ export function PacksScreen({
               label="Tiếng Trung"
               language="chinese"
               sectionPacks={chinesePacks}
+              starredPackId={-100}
+              starredPackName="⭐ Dấu sao - Tiếng Trung"
             />
           )}
 
@@ -591,6 +622,8 @@ export function PacksScreen({
               label="Tiếng Anh"
               language="english"
               sectionPacks={englishPacks}
+              starredPackId={-101}
+              starredPackName="⭐ Dấu sao - Tiếng Anh"
             />
           )}
         </div>

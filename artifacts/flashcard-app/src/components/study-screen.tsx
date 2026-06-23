@@ -2,18 +2,20 @@ import { useState, useEffect, useRef } from "react";
 import {
   useListWords,
   useUpdatePack,
+  useStarredWords,
   getListPacksQueryKey,
   VocabWord,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ArrowRight, Volume2 } from "lucide-react";
+import { ChevronLeft, ArrowRight, Volume2, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { StudyMode } from "@/lib/types";
 import { toPinyin } from "@/lib/pinyin";
 
 interface StudyScreenProps {
+  userId: number;
   packId: number;
   packName: string;
   packLanguage: string;
@@ -30,6 +32,7 @@ interface StudyScreenProps {
 type Feedback = "correct" | "wrong" | null;
 
 export function StudyScreen({
+  userId,
   packId,
   packName,
   packLanguage,
@@ -38,8 +41,26 @@ export function StudyScreen({
   onFinish,
 }: StudyScreenProps) {
   const qc = useQueryClient();
-  const { data: fetchedWords = [], isLoading } = useListWords(packId);
-  const allWords = preselectedWords ?? fetchedWords;
+
+  const isStarredPack = packId === -100 || packId === -101;
+
+  const { data: fetchedWords = [], isLoading: isLoadingWords } = useListWords(
+    packId,
+    {
+      query: {
+        enabled: !isStarredPack && !!packId,
+      },
+    }
+  );
+
+  const {
+    data: starredWords = [],
+    isLoading: isLoadingStarred,
+  } = useStarredWords(userId, packLanguage);
+
+  const allWords = preselectedWords ?? (isStarredPack ? starredWords : fetchedWords);
+  const isLoading = isStarredPack ? isLoadingStarred : isLoadingWords;
+
   const updatePack = useUpdatePack();
 
   const [mode, setMode] = useState<StudyMode | null>(null);
@@ -70,14 +91,52 @@ export function StudyScreen({
 
     window.speechSynthesis.cancel();
 
-    // Chỉ đọc chữ Hán hoặc từ tiếng Anh, KHÔNG đọc pinyin.
     const utterance = new SpeechSynthesisUtterance(word.term);
     utterance.lang = packLanguage === "chinese" ? "zh-CN" : "en-US";
     utterance.rate = 0.85;
 
     window.speechSynthesis.speak(utterance);
   };
+const handleToggleStar = async (word: VocabWord) => {
+  try {
+    const nextStarred = !word.starred;
 
+    const res = await fetch(`/api/words/${word.id}/star`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        starred: nextStarred,
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error(await res.text());
+    }
+
+    const updatedWord = await res.json();
+
+    setCurrentWord((prev) =>
+      prev && prev.id === updatedWord.id
+        ? { ...prev, ...updatedWord }
+        : prev
+    );
+
+    setQueue((prev) =>
+      prev.map((w) =>
+        w.id === updatedWord.id ? { ...w, ...updatedWord } : w
+      )
+    );
+  } catch (err) {
+    console.error(err);
+    toast({
+      title: "Lỗi",
+      description: "Không thể đánh dấu sao",
+      variant: "destructive",
+    });
+  }
+};
   useEffect(() => {
     if (!feedback && currentWord && inputRef.current) {
       inputRef.current.focus();
@@ -117,8 +176,10 @@ export function StudyScreen({
   const handleStart = (selectedMode: StudyMode) => {
     if (allWords.length === 0) {
       toast({
-        title: "Bộ từ trống",
-        description: "Hãy thêm từ trước khi học!",
+        title: "Không có từ để học",
+        description: isStarredPack
+          ? "Bạn chưa đánh dấu sao từ nào trong ngôn ngữ này."
+          : "Hãy thêm từ trước khi học!",
       });
       return;
     }
@@ -144,14 +205,12 @@ export function StudyScreen({
 
   const checkAnswer = () => {
     if (!currentWord || !answer.trim() || feedback) return;
-    
 
     const correct =
       answer.trim().toLowerCase() ===
       getCorrectAnswer(currentWord).toLowerCase();
 
     setFeedback(correct ? "correct" : "wrong");
-    // Enter xong luôn phát âm từ hiện tại
     speakWord(currentWord);
     setAnswered((a) => a + 1);
 
@@ -159,13 +218,15 @@ export function StudyScreen({
       const newScore = score + 1;
       setScore(newScore);
 
-      updatePack.mutate(
-        { packId, data: { learned: newScore } },
-        {
-          onSuccess: () =>
-            qc.invalidateQueries({ queryKey: getListPacksQueryKey() }),
-        }
-      );
+      if (!isStarredPack) {
+        updatePack.mutate(
+          { packId, data: { learned: newScore } },
+          {
+            onSuccess: () =>
+              qc.invalidateQueries({ queryKey: getListPacksQueryKey(userId) }),
+          }
+        );
+      }
 
       const advance = () => {
         if (correctTimerRef.current) {
@@ -306,7 +367,7 @@ export function StudyScreen({
         <div className="text-right">
           <p className="text-sm font-medium text-foreground">Điểm: {score}</p>
           <p className="text-xs text-muted-foreground">
-            {answered + 1}/{initialTotal}
+            {Math.min(answered + 1, initialTotal)}/{initialTotal}
           </p>
         </div>
       </div>
@@ -341,6 +402,20 @@ export function StudyScreen({
               >
                 <Volume2 className="h-4 w-4" />
               </button>
+              <button
+  type="button"
+  onClick={() => handleToggleStar(currentWord)}
+  className="absolute -left-8 top-0 text-muted-foreground hover:text-yellow-500"
+  title={currentWord.starred ? "Bỏ đánh dấu sao" : "Đánh dấu sao"}
+>
+  <Star
+    className={`h-4 w-4 ${
+      currentWord.starred
+        ? "fill-yellow-400 text-yellow-400"
+        : ""
+    }`}
+  />
+</button>
             </div>
           </div>
 
@@ -355,7 +430,7 @@ export function StudyScreen({
               </span>
 
               <span className="text-sm text-muted-foreground tracking-widest">
-                {(currentWord as any).pinyin || toPinyin(currentWord.term)}
+                {currentWord.pinyin || toPinyin(currentWord.term)}
               </span>
 
               <span className="text-sm text-foreground font-medium">

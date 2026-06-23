@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useListWords, VocabWord } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, CheckSquare, Square } from "lucide-react";
+import { ChevronLeft, CheckSquare, Square, Star } from "lucide-react";
 import { toPinyin } from "@/lib/pinyin";
 
 interface WordSelectScreenProps {
@@ -12,7 +12,13 @@ interface WordSelectScreenProps {
   onStart: (selectedWords: VocabWord[]) => void;
 }
 
-export function WordSelectScreen({ packId, packName, packLanguage, onBack, onStart }: WordSelectScreenProps) {
+export function WordSelectScreen({
+  packId,
+  packName,
+  packLanguage,
+  onBack,
+  onStart,
+}: WordSelectScreenProps) {
   const { data: words = [], isLoading } = useListWords(packId);
   const [selectedIds, setSelectedIds] = useState<Set<number> | null>(null);
 
@@ -23,13 +29,15 @@ export function WordSelectScreen({ packId, packName, packLanguage, onBack, onSta
     return new Set(words.map((w) => w.id));
   }, [selectedIds, words]);
 
-  const allSelected = effectiveSelected.size === words.length;
+  const allSelected = words.length > 0 && effectiveSelected.size === words.length;
   const noneSelected = effectiveSelected.size === 0;
 
   const toggle = (id: number) => {
     const next = new Set(effectiveSelected);
+
     if (next.has(id)) next.delete(id);
     else next.add(id);
+
     setSelectedIds(next);
   };
 
@@ -44,15 +52,21 @@ export function WordSelectScreen({ packId, packName, packLanguage, onBack, onSta
   const handleStart = () => {
     const chosen = words.filter((w) => effectiveSelected.has(w.id));
     if (chosen.length === 0) return;
+
     onStart(chosen);
   };
 
   return (
     <div className="w-full max-w-xl mx-auto flex flex-col gap-4">
       <div className="flex items-center gap-3 pt-4">
-        <button onClick={onBack} className="text-muted-foreground hover:text-foreground transition-colors" data-testid="button-back">
+        <button
+          onClick={onBack}
+          className="text-muted-foreground hover:text-foreground transition-colors"
+          data-testid="button-back"
+        >
           <ChevronLeft className="h-5 w-5" />
         </button>
+
         <div>
           <h2 className="text-xl font-bold text-foreground">Chọn từ để học</h2>
           <p className="text-xs text-muted-foreground">{packName}</p>
@@ -62,28 +76,44 @@ export function WordSelectScreen({ packId, packName, packLanguage, onBack, onSta
       <div className="bg-card border border-border rounded-lg overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3 border-b border-border">
           <span className="text-sm text-muted-foreground">
-            Đã chọn <span className="font-semibold text-foreground">{effectiveSelected.size}</span> / {words.length} từ
+            Đã chọn{" "}
+            <span className="font-semibold text-foreground">
+              {effectiveSelected.size}
+            </span>{" "}
+            / {words.length} từ
           </span>
+
           <button
             onClick={toggleAll}
             className="flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
             data-testid="button-toggle-all"
           >
-            {allSelected
-              ? <><CheckSquare className="h-4 w-4" /> Bỏ chọn tất cả</>
-              : <><Square className="h-4 w-4" /> Chọn tất cả</>
-            }
+            {allSelected ? (
+              <>
+                <CheckSquare className="h-4 w-4" /> Bỏ chọn tất cả
+              </>
+            ) : (
+              <>
+                <Square className="h-4 w-4" /> Chọn tất cả
+              </>
+            )}
           </button>
         </div>
 
         {isLoading ? (
-          <p className="px-5 py-4 text-sm text-muted-foreground">Đang tải...</p>
+          <p className="px-5 py-4 text-sm text-muted-foreground">
+            Đang tải...
+          </p>
         ) : words.length === 0 ? (
-          <p className="px-5 py-4 text-sm text-muted-foreground">Bộ từ chưa có từ nào</p>
+          <p className="px-5 py-4 text-sm text-muted-foreground">
+            Bộ từ chưa có từ nào
+          </p>
         ) : (
           <ul className="divide-y divide-border max-h-[55vh] overflow-y-auto">
             {words.map((w) => {
               const checked = effectiveSelected.has(w.id);
+              const starred = Boolean((w as any).starred);
+
               return (
                 <li
                   key={w.id}
@@ -93,23 +123,51 @@ export function WordSelectScreen({ packId, packName, packLanguage, onBack, onSta
                   }`}
                   data-testid={`word-row-${w.id}`}
                 >
-                  <span className={`shrink-0 transition-colors ${checked ? "text-primary" : "text-muted-foreground/40"}`}>
-                    {checked
-                      ? <CheckSquare className="h-4 w-4" />
-                      : <Square className="h-4 w-4" />
-                    }
+                  <span
+                    className={`shrink-0 transition-colors ${
+                      checked ? "text-primary" : "text-muted-foreground/40"
+                    }`}
+                  >
+                    {checked ? (
+                      <CheckSquare className="h-4 w-4" />
+                    ) : (
+                      <Square className="h-4 w-4" />
+                    )}
                   </span>
+
                   <div className="flex-1 min-w-0">
-                    <span className={`font-semibold text-sm ${isChinese ? "font-serif text-base" : ""} ${checked ? "text-foreground" : "text-muted-foreground"}`}>
-                      {w.term}
-                    </span>
-                    {isChinese && ( 
-                       <p className="text-xs text-muted-foreground tracking-wide">
-                         {(w as any).pinyin || toPinyin(w.term)}
-                          </p>
-                        )}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span
+                        className={`font-semibold text-sm truncate ${
+                          isChinese ? "font-serif text-base" : ""
+                        } ${
+                          checked
+                            ? "text-foreground"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        {w.term}
+                      </span>
+
+                      {starred && (
+                        <Star className="h-3.5 w-3.5 shrink-0 fill-yellow-400 text-yellow-400" />
+                      )}
+                    </div>
+
+                    {isChinese && (
+                      <p className="text-xs text-muted-foreground tracking-wide">
+                        {(w as any).pinyin || toPinyin(w.term)}
+                      </p>
+                    )}
                   </div>
-                  <span className={`text-sm truncate max-w-[45%] ${checked ? "text-muted-foreground" : "text-muted-foreground/40"}`}>
+
+                  <span
+                    className={`text-sm truncate max-w-[45%] ${
+                      checked
+                        ? "text-muted-foreground"
+                        : "text-muted-foreground/40"
+                    }`}
+                  >
                     {w.meaning}
                   </span>
                 </li>
@@ -125,7 +183,8 @@ export function WordSelectScreen({ packId, packName, packLanguage, onBack, onSta
         className="w-full h-11 text-base font-semibold"
         data-testid="button-start-study"
       >
-        Bắt đầu học {effectiveSelected.size > 0 ? `(${effectiveSelected.size} từ)` : ""}
+        Bắt đầu học{" "}
+        {effectiveSelected.size > 0 ? `(${effectiveSelected.size} từ)` : ""}
       </Button>
     </div>
   );
